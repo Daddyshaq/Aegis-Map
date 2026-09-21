@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: aegis-map-api
+    runtime: docker
+    dockerfilePath: apps/api/Dockerfile
+    dockerContext: .
+    plan: starter
+    region: oregon
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        value: 4000
+      - key: LOG_LEVEL
+        value: info
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+      - key: W3W_API_KEY
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        value: mailto:alerts@aegismap.example

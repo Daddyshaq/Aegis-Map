@@ -126,15 +126,13 @@ checklist are in [docs/security.md](./docs/security.md).
 
 - [Architecture](./docs/architecture.md) — system shape, layers, contracts.
 - [Development setup](./docs/development/setup.md) — run it locally.
+- [Production Setup Guide](./docs/PRODUCTION_SETUP.md) — complete production guide for Supabase (Database & Auth), Render (Backend API), and Vercel (Frontend Web & PWA).
 - [Deployment](./docs/deployment.md) — containers, Supabase, release sequence.
 - [Security](./docs/security.md) — trust model, secrets, RLS, hardening.
 
 ## Deployment
 
-Two containers (Fastify API, nginx-served SPA) plus a Supabase project. Build with the
-provided multi-stage Dockerfiles or `docker compose up --build`. Configuration splits into
-public web **build args** (`VITE_*`, baked into the bundle) and secret API **runtime env**.
-Step-by-step in [docs/deployment.md](./docs/deployment.md).
+Deploy the frontend to **Vercel**, the backend API to **Render**, and connect both to your **Supabase** database project. Follow the step-by-step [Production Setup Guide](./docs/PRODUCTION_SETUP.md).
 
 ## License
 

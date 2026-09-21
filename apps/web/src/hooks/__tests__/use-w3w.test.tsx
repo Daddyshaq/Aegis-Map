@@ -22,7 +22,7 @@ vi.mock('@/lib/api-client', () => ({
         country: 'NG',
         nearestPlace: 'Abuja',
       })),
-      autosuggest: vi.fn(async (input: string) => [
+      autosuggest: vi.fn(async (_input: string) => [
         {
           words: '///filled.count.soap',
           nearestPlace: 'Abuja, Federal Capital Territory',

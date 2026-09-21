@@ -1,0 +1,109 @@
+# =============================================================================
+# Aegis Map — Production Docker Compose Stack
+# Run with: docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # 1. Reverse Proxy & Automated SSL (Caddy)
+  # ---------------------------------------------------------------------------
+  proxy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      PRODUCTION_DOMAIN: ${PRODUCTION_DOMAIN:?set PRODUCTION_DOMAIN in .env.production}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+    networks:
+      - aegis-net
+
+  # ---------------------------------------------------------------------------
+  # 2. Fastify Backend API
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_HOST: 0.0.0.0
+      API_PORT: 4000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://${PRODUCTION_DOMAIN}}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-150}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-1 minute}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-15728640}
+      EXPIRY_SWEEP_MINUTES: ${EXPIRY_SWEEP_MINUTES:-15}
+      # Supabase Production Credentials
+      SUPABASE_URL: ${SUPABASE_URL:?set SUPABASE_URL in .env.production}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY in .env.production}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?set SUPABASE_SERVICE_ROLE_KEY in .env.production}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env.production}
+      # Mapping & What3Words
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+      W3W_API_KEY: ${W3W_API_KEY:-}
+      W3W_BASE_URL: ${W3W_BASE_URL:-https://api.what3words.com/v3}
+      GEOCODING_PROVIDER: ${GEOCODING_PROVIDER:-nominatim}
+      GEOCODING_BASE_URL: ${GEOCODING_BASE_URL:-https://nominatim.openstreetmap.org}
+      GEOCODING_API_KEY: ${GEOCODING_API_KEY:-}
+      ROUTING_PROVIDER: ${ROUTING_PROVIDER:-osrm}
+      ROUTING_BASE_URL: ${ROUTING_BASE_URL:-https://router.project-osrm.org}
+      ROUTING_API_KEY: ${ROUTING_API_KEY:-}
+      # Web Push
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:alerts@example.com}
+    expose:
+      - '4000'
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - aegis-net
+
+  # ---------------------------------------------------------------------------
+  # 3. React SPA & PWA Web Frontend (Nginx)
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?set VITE_SUPABASE_URL in .env.production}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:?set VITE_SUPABASE_ANON_KEY in .env.production}
+        VITE_API_URL: ${VITE_API_URL:-https://${PRODUCTION_DOMAIN}/api}
+        VITE_MAP_STYLE_URL: ${VITE_MAP_STYLE_URL:-https://tiles.openfreemap.org/styles/liberty}
+        VITE_MAP_DEFAULT_LAT: ${VITE_MAP_DEFAULT_LAT:-9.0765}
+        VITE_MAP_DEFAULT_LNG: ${VITE_MAP_DEFAULT_LNG:-7.3986}
+        VITE_MAP_DEFAULT_ZOOM: ${VITE_MAP_DEFAULT_ZOOM:-6}
+        VITE_VAPID_PUBLIC_KEY: ${VITE_VAPID_PUBLIC_KEY:-}
+        VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
+        VITE_GOOGLE_MAPS_MAP_ID: ${VITE_GOOGLE_MAPS_MAP_ID:-DEMO_MAP_ID}
+    restart: unless-stopped
+    expose:
+      - '8080'
+    networks:
+      - aegis-net
+
+networks:
+  aegis-net:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
