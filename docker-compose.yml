@@ -1,0 +1,55 @@
+# Aegis Map — application services (API + Web).
+#
+# This composes the two services THIS repo builds. The data plane — Postgres +
+# PostGIS, Auth, Storage, Realtime — is Supabase, which runs as its own stack:
+#   • Local dev:  `supabase start` (Supabase CLI) exposes it on :54321.
+#   • Hosted:     a Supabase Cloud project.
+# Point the services at whichever you use via the variables below (compose reads
+# them from a sibling `.env` — copy `.env.example` and fill it in).
+#
+# Reaching a Supabase running on the HOST from inside these containers (Docker
+# Desktop): set SUPABASE_URL=http://host.docker.internal:54321.
+#
+# Browser-facing values (VITE_*) must resolve from the user's browser, so they
+# use localhost/public URLs — NOT the internal compose service names.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: production
+      API_HOST: 0.0.0.0
+      API_PORT: 4000
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Server-only Supabase credentials — never exposed to the browser.
+      SUPABASE_URL: ${SUPABASE_URL:?set SUPABASE_URL in .env}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:?set SUPABASE_ANON_KEY in .env}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?set SUPABASE_SERVICE_ROLE_KEY in .env}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
+      # Optional Web Push (leave blank to disable).
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:alerts@aegismap.example}
+    ports:
+      - '${API_PORT:-4000}:4000'
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Public, build-time configuration baked into the SPA bundle.
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?set VITE_SUPABASE_URL in .env}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:?set VITE_SUPABASE_ANON_KEY in .env}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
+        VITE_MAP_STYLE_URL: ${VITE_MAP_STYLE_URL:-}
+        VITE_VAPID_PUBLIC_KEY: ${VITE_VAPID_PUBLIC_KEY:-}
+    ports:
+      - '${WEB_PORT:-8080}:8080'
+    depends_on:
+      - api
+    restart: unless-stopped

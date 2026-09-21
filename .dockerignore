@@ -1,0 +1,44 @@
+# Keep the Docker build context small and deterministic. Anything the image
+# builds for itself (installed modules, compiled output) must NOT be copied in
+# from the host, or it can shadow the in-container install for a different OS.
+
+# Dependencies (reinstalled inside the image)
+node_modules/
+**/node_modules/
+.pnpm-store/
+
+# Build outputs (rebuilt inside the image)
+dist/
+**/dist/
+build/
+**/build/
+.turbo/
+**/.turbo/
+*.tsbuildinfo
+coverage/
+**/coverage/
+apps/web/dev-dist/
+playwright-report/
+test-results/
+
+# Environment & secrets — never bake into an image
+.env
+.env.local
+.env.*.local
+**/.env
+!.env.example
+
+# VCS & tooling
+.git/
+.github/
+.vscode/
+.idea/
+
+# Supabase local state
+supabase/.branches/
+supabase/.temp/
+
+# Docs & misc that don't belong in a runtime image
+*.log
+.DS_Store
+Thumbs.db

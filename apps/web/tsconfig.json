@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "useDefineForClassFields": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@crisis/types": ["../../packages/types/src/index.ts"],
+      "@crisis/validation": ["../../packages/validation/src/index.ts"],
+      "@crisis/config": ["../../packages/config/src/index.ts"],
+      "@crisis/utils": ["../../packages/utils/src/index.ts"],
+      "@crisis/ui": ["../../packages/ui/src/index.ts"],
+      "@crisis/ui/*": ["../../packages/ui/src/*"]
+    }
+  },
+  "include": ["src", "vite-env.d.ts"]
+}

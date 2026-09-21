@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "moduleDetection": "force",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": false,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "paths": {
+      "@crisis/types": ["./packages/types/src/index.ts"],
+      "@crisis/validation": ["./packages/validation/src/index.ts"],
+      "@crisis/config": ["./packages/config/src/index.ts"],
+      "@crisis/utils": ["./packages/utils/src/index.ts"],
+      "@crisis/database": ["./packages/database/src/index.ts"],
+      "@crisis/ui": ["./packages/ui/src/index.ts"],
+      "@crisis/ui/*": ["./packages/ui/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "build", "coverage", ".turbo"]
+}

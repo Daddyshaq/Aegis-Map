@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Aegis Map">
+  <rect width="512" height="512" rx="96" fill="#0f172a" />
+  <path
+    d="M256 80c48 28 96 40 140 40 0 132-52 236-140 272-88-36-140-140-140-272 44 0 92-12 140-40Z"
+    fill="#2563eb"
+    stroke="#93c5fd"
+    stroke-width="14"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M212 262l30 30 62-70"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="24"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>
