@@ -14,7 +14,11 @@ loadEnv({ path: fileURLToPath(new URL('../../../../.env', import.meta.url)) });
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_HOST: z.string().default('0.0.0.0'),
-  API_PORT: z.coerce.number().int().positive().default(4000),
+  API_PORT: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(() => (process.env.PORT ? Number(process.env.PORT) : 4000)),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),

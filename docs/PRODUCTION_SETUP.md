@@ -89,13 +89,27 @@ The Fastify API runs inside Docker and handles spatial clustering, rate limiting
 ### Step 2.1: Create Web Service on Render
 1. Go to **[dashboard.render.com](https://dashboard.render.com/)** and click **New +** ➔ **Web Service**.
 2. Connect your Git repository (`Aegis-Map`).
-3. Configure the service settings:
-   - **Name**: `aegis-map-api`
-   - **Region**: Choose the same region or closest region to your Supabase project (e.g. `Oregon` or `Frankfurt`).
-   - **Runtime**: `Docker`
-   - **Dockerfile Path**: `apps/api/Dockerfile`
-   - **Docker Context**: `.` *(the repository root directory)*
-   - **Instance Type**: `Free` or `Starter` (Starter recommended for production to prevent cold-starts).
+3. Render allows deploying either using its native **Node** runtime or **Docker**:
+
+#### If Render selected "Node" (Default — shows Build Command & Start Command):
+- **Name**: `aegis-map-api`
+- **Region**: Choose the same or closest region to your Supabase project (e.g. `Oregon` or `Frankfurt`).
+- **Build Command**:
+  ```bash
+  corepack enable && pnpm install --frozen-lockfile && pnpm --filter @crisis/api build
+  ```
+  *(Alternative if corepack is not available: `npm install -g pnpm && pnpm install --frozen-lockfile && pnpm --filter @crisis/api build`)*
+- **Start Command**:
+  ```bash
+  node apps/api/dist/index.js
+  ```
+- **Instance Type**: `Free` or `Starter` (Starter is recommended for production to prevent cold-starts).
+
+#### If you prefer "Docker":
+- In the **Language / Runtime** dropdown on Render, select **Docker** instead of Node.
+- The Build & Start Command inputs will disappear and be replaced with:
+  - **Dockerfile Path**: `apps/api/Dockerfile`
+  - **Docker Context**: `.` *(the repository root)*
 
 ---
 
