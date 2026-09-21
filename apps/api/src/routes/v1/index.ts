@@ -13,6 +13,7 @@ import { notificationRoutes } from './notifications';
 import { reportRoutes } from './reports';
 import { routingRoutes } from './routing';
 import { safeLocationRoutes } from './safe-locations';
+import { w3wRoutes } from './w3w';
 
 /** Register all v1 routes. Mounted under `/api/v1` by the app. */
 export async function registerV1Routes(app: FastifyInstance): Promise<void> {
@@ -29,4 +30,5 @@ export async function registerV1Routes(app: FastifyInstance): Promise<void> {
   await app.register(adminRoutes);
   await app.register(guideRoutes);
   await app.register(geoRoutes);
+  await app.register(w3wRoutes);
 }

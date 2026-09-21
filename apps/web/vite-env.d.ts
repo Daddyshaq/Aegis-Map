@@ -14,6 +14,8 @@ interface ImportMetaEnv {
   readonly VITE_MAP_DEFAULT_LNG?: string;
   readonly VITE_MAP_DEFAULT_ZOOM?: string;
   readonly VITE_VAPID_PUBLIC_KEY?: string;
+  readonly VITE_GOOGLE_MAPS_API_KEY?: string;
+  readonly VITE_GOOGLE_MAPS_MAP_ID?: string;
 }
 
 interface ImportMeta {

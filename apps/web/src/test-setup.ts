@@ -1,11 +1,10 @@
-/**
- * Global test setup for Vitest + JSDOM.
- *
- * JSDOM does not implement `window.matchMedia`. This stub provides a no-op
- * implementation so hooks / utilities that rely on it (e.g. checkIsStandalone)
- * don't throw at import-time.  Individual tests can still override via
- * `vi.spyOn(window, 'matchMedia')`.
- */
+import '@testing-library/jest-dom/vitest';
+
+Object.assign(import.meta.env, {
+  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || 'https://mock.supabase.co',
+  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY || 'mock-anon-key',
+  VITE_API_URL: import.meta.env.VITE_API_URL || 'http://localhost:4400',
+});
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -21,3 +20,4 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: () => false,
   }),
 });
+

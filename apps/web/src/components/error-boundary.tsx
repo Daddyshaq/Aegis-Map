@@ -48,6 +48,12 @@ export class ErrorBoundary extends Component<Props, State> {
             An unexpected error occurred while rendering this page. You can try again — if it keeps
             happening, reload the app.
           </p>
+          {error && (
+            <div className="mt-4 max-h-60 overflow-auto rounded border border-destructive/30 bg-destructive/10 p-3 text-left font-mono text-xs text-destructive">
+              <div className="font-bold">{error.toString()}</div>
+              {error.stack && <pre className="mt-1 whitespace-pre-wrap">{error.stack}</pre>}
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <Button onClick={this.reset}>Try again</Button>

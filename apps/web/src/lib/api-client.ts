@@ -19,6 +19,8 @@ import type {
   SafeLocation,
   SavedLocation,
   SystemSetting,
+  What3WordsResult,
+  What3WordsSuggestion,
 } from '@crisis/types';
 import type { NotificationPreferences } from '@crisis/types';
 import type {
@@ -344,6 +346,15 @@ export const api = {
       request<GeocodeResult[]>('/geo/search', { query: { q, limit } }),
     reverse: (lat: number, lng: number) =>
       request<GeocodeResult | null>('/geo/reverse', { query: { lat, lng } }),
+  },
+
+  w3w: {
+    convertToCoordinates: (words: string) =>
+      request<What3WordsResult>('/w3w/convert-to-coordinates', { query: { words } }),
+    convertTo3wa: (lat: number, lng: number) =>
+      request<What3WordsResult>('/w3w/convert-to-3wa', { query: { lat, lng } }),
+    autosuggest: (input: string) =>
+      request<What3WordsSuggestion[]>('/w3w/autosuggest', { query: { input } }),
   },
 };
 

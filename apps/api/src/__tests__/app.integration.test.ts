@@ -221,4 +221,53 @@ describe('API integration', () => {
       );
     });
   });
+
+  describe('What3Words and Geocoding APIs', () => {
+    it('converts What3Words address to coordinates', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/w3w/convert-to-coordinates?words=filled.count.soap',
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.success).toBe(true);
+      expect(body.data.words).toBe('///filled.count.soap');
+      expect(typeof body.data.lat).toBe('number');
+      expect(typeof body.data.lng).toBe('number');
+    });
+
+    it('converts coordinates to 3-word address', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/w3w/convert-to-3wa?lat=9.0765&lng=7.3986',
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.success).toBe(true);
+      expect(body.data.words).toMatch(/^\/\/\/[a-z]+\.[a-z]+\.[a-z]+$/);
+    });
+
+    it('autosuggests What3Words addresses', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/w3w/autosuggest?input=bridge.lake',
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.success).toBe(true);
+      expect(Array.isArray(body.data)).toBe(true);
+    });
+
+    it('resolves What3Words in /geo/search transparently', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/geo/search?q=///bridge.lake.river',
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.success).toBe(true);
+      expect(body.data.length).toBeGreaterThan(0);
+      expect(body.data[0].what3words).toBe('///bridge.lake.river');
+    });
+  });
 });

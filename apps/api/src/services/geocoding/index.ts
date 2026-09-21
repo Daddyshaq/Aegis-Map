@@ -2,6 +2,7 @@ import type { GeocodeResult } from '@crisis/types';
 
 import { env } from '../../config/env';
 import { upstreamError } from '../../lib/errors';
+import { isWhat3Words, w3wService } from '../w3w.service';
 
 export interface GeocodingProvider {
   readonly name: string;
@@ -15,6 +16,71 @@ interface NominatimItem {
   lon: string;
   type?: string;
   boundingbox?: [string, string, string, string];
+}
+
+interface GoogleGeocodeResult {
+  formatted_address: string;
+  geometry: {
+    location: { lat: number; lng: number };
+    viewport?: {
+      northeast: { lat: number; lng: number };
+      southwest: { lat: number; lng: number };
+    };
+  };
+  types?: string[];
+}
+
+/** Google Maps Geocoding API provider. */
+class GoogleGeocodingProvider implements GeocodingProvider {
+  readonly name = 'google';
+  constructor(private readonly apiKey: string) {}
+
+  async search(query: string, limit = 5): Promise<GeocodeResult[]> {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${this.apiKey}`;
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const data = (await res.json()) as { results?: GoogleGeocodeResult[]; status: string };
+      if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+        throw new Error(`Google Geocoding API status: ${data.status}`);
+      }
+      return (data.results ?? []).slice(0, limit).map((item) => ({
+        displayName: item.formatted_address,
+        lat: item.geometry.location.lat,
+        lng: item.geometry.location.lng,
+        type: item.types?.[0],
+        boundingBox: item.geometry.viewport
+          ? {
+              minLat: item.geometry.viewport.southwest.lat,
+              maxLat: item.geometry.viewport.northeast.lat,
+              minLng: item.geometry.viewport.southwest.lng,
+              maxLng: item.geometry.viewport.northeast.lng,
+            }
+          : undefined,
+      }));
+    } catch (err) {
+      throw upstreamError(`Google geocoding failed: ${(err as Error).message}`);
+    }
+  }
+
+  async reverse(lat: number, lng: number): Promise<GeocodeResult | null> {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${this.apiKey}`;
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const data = (await res.json()) as { results?: GoogleGeocodeResult[]; status: string };
+      if (data.status !== 'OK' || !data.results?.[0]) return null;
+      const item = data.results[0];
+      return {
+        displayName: item.formatted_address,
+        lat: item.geometry.location.lat,
+        lng: item.geometry.location.lng,
+        type: item.types?.[0],
+      };
+    } catch (err) {
+      throw upstreamError(`Google reverse geocoding failed: ${(err as Error).message}`);
+    }
+  }
 }
 
 /** Nominatim (OpenStreetMap) geocoder. Respects usage policy via User-Agent. */
@@ -70,15 +136,65 @@ function toResult(item: NominatimItem): GeocodeResult {
   };
 }
 
+class CompositeGeocodingProvider implements GeocodingProvider {
+  readonly name = 'composite';
+  constructor(private readonly primary: GeocodingProvider) {}
+
+  async search(query: string, limit = 5): Promise<GeocodeResult[]> {
+    // If the user entered a What3Words address, resolve it directly via What3Words
+    if (isWhat3Words(query)) {
+      try {
+        const w3w = await w3wService.convertToCoordinates(query);
+        return [
+          {
+            displayName: `${w3w.words} (${w3w.nearestPlace ? `${w3w.nearestPlace}, ` : ''}${w3w.country ?? 'Grid'})`,
+            lat: w3w.lat,
+            lng: w3w.lng,
+            type: 'what3words',
+            what3words: w3w.words,
+          },
+        ];
+      } catch {
+        // Fall back to general geocoding search if What3Words resolution fails
+      }
+    }
+
+    return this.primary.search(query, limit);
+  }
+
+  async reverse(lat: number, lng: number): Promise<GeocodeResult | null> {
+    const result = await this.primary.reverse(lat, lng);
+    // Attach What3Words 3-word address to reverse geocoding result
+    try {
+      const w3w = await w3wService.convertTo3wa(lat, lng);
+      if (result) {
+        result.what3words = w3w.words;
+        return result;
+      }
+      return {
+        displayName: w3w.words,
+        lat,
+        lng,
+        type: 'what3words',
+        what3words: w3w.words,
+      };
+    } catch {
+      return result;
+    }
+  }
+}
+
 let provider: GeocodingProvider | null = null;
 
 export function getGeocodingProvider(): GeocodingProvider {
   if (provider) return provider;
-  switch (env.GEOCODING_PROVIDER) {
-    case 'nominatim':
-    default:
-      provider = new NominatimProvider(env.GEOCODING_BASE_URL);
-      break;
+  let baseProvider: GeocodingProvider;
+  if (env.GEOCODING_PROVIDER === 'google' || env.GOOGLE_MAPS_API_KEY) {
+    baseProvider = new GoogleGeocodingProvider(env.GOOGLE_MAPS_API_KEY);
+  } else {
+    baseProvider = new NominatimProvider(env.GEOCODING_BASE_URL);
   }
+  provider = new CompositeGeocodingProvider(baseProvider);
   return provider;
 }
+

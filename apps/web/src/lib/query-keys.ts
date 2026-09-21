@@ -64,4 +64,10 @@ export const queryKeys = {
   },
 
   geo: (query: string) => ['geo', query] as const,
+
+  w3w: {
+    words: (lat: number, lng: number) => ['w3w', 'coords', lat, lng] as const,
+    coords: (words: string) => ['w3w', 'words', words] as const,
+    suggest: (input: string) => ['w3w', 'suggest', input] as const,
+  },
 } as const;

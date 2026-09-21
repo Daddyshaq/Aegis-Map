@@ -14,6 +14,11 @@ interface AppEnv {
     defaultLng: number;
     defaultZoom: number;
   };
+  /** Present when Google Maps Platform is configured for this deployment. */
+  googleMaps: {
+    apiKey: string | null;
+    mapId: string;
+  };
   /** Present only when Web Push is configured for this deployment. */
   vapidPublicKey: string | null;
 }
@@ -33,6 +38,11 @@ function numberWithDefault(value: string | undefined, fallback: number): number 
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function optionalString(value: string | undefined): string | null {
+  if (value === undefined || value.trim() === '') return null;
+  return value;
+}
+
 export const env: AppEnv = {
   supabaseUrl: required('VITE_SUPABASE_URL', import.meta.env.VITE_SUPABASE_URL),
   supabaseAnonKey: required('VITE_SUPABASE_ANON_KEY', import.meta.env.VITE_SUPABASE_ANON_KEY),
@@ -43,6 +53,10 @@ export const env: AppEnv = {
     defaultLat: numberWithDefault(import.meta.env.VITE_MAP_DEFAULT_LAT, 9.0765),
     defaultLng: numberWithDefault(import.meta.env.VITE_MAP_DEFAULT_LNG, 7.3986),
     defaultZoom: numberWithDefault(import.meta.env.VITE_MAP_DEFAULT_ZOOM, 6),
+  },
+  googleMaps: {
+    apiKey: optionalString(import.meta.env.VITE_GOOGLE_MAPS_API_KEY),
+    mapId: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID ?? 'DEMO_MAP_ID',
   },
   vapidPublicKey: import.meta.env.VITE_VAPID_PUBLIC_KEY ?? null,
 };

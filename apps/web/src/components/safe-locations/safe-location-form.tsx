@@ -11,13 +11,13 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -119,7 +119,7 @@ export function SafeLocationForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Type</FormLabel>
-              <Select value={field.value ?? ''} onValueChange={field.onChange}>
+              <Select value={field.value || undefined} onValueChange={field.onChange}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a type" />
@@ -167,7 +167,7 @@ export function SafeLocationForm({
         />
 
         <div className="space-y-2">
-          <FormLabel>Location</FormLabel>
+          <Label>Location</Label>
           <LocationPicker
             value={lat != null && lng != null ? { lat, lng } : null}
             onChange={(pos) => {
@@ -278,18 +278,16 @@ export function SafeLocationForm({
           />
         </div>
 
-        <FormItem>
-          <FormLabel htmlFor="facilities">Facilities (optional)</FormLabel>
-          <FormControl>
-            <Input
-              id="facilities"
-              placeholder="water, medical, food, wheelchair-access"
-              value={facilitiesText}
-              onChange={(e) => setFacilitiesText(e.target.value)}
-            />
-          </FormControl>
-          <FormDescription>Separate facilities with commas.</FormDescription>
-        </FormItem>
+        <div className="space-y-2">
+          <Label htmlFor="facilities">Facilities (optional)</Label>
+          <Input
+            id="facilities"
+            placeholder="water, medical, food, wheelchair-access"
+            value={facilitiesText}
+            onChange={(e) => setFacilitiesText(e.target.value)}
+          />
+          <p className="text-sm text-muted-foreground">Separate facilities with commas.</p>
+        </div>
 
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           {onCancel && (

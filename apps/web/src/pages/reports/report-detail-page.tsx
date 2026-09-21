@@ -1,7 +1,7 @@
 import { RISK_PRESENTATION } from '@crisis/config';
 import type { CrisisEvidence } from '@crisis/types';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { CrisisStatusBadge } from '@/components/crisis-status-badge';
@@ -32,6 +32,7 @@ import { MODERATION_ACTION_LABELS } from '@/lib/labels';
 import { queryKeys } from '@/lib/query-keys';
 import { routes } from '@/lib/routes';
 import { useAuth } from '@/providers/auth-provider';
+import { useWhat3Words } from '@/hooks/use-w3w';
 
 export function ReportDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -52,6 +53,16 @@ export function ReportDetailPage() {
   const risk = RISK_PRESENTATION[report.riskLevel];
   const isOwner = !!profile && profile.id === report.reportedBy;
   const canCorroborate = isAuthenticated && !isOwner;
+  const { data: w3w } = useWhat3Words(report.lat, report.lng);
+
+  const copyW3W = useCallback(() => {
+    if (!w3w?.words) return;
+    const text = w3w.words.startsWith('///') ? w3w.words : `///${w3w.words}`;
+    navigator.clipboard.writeText(text).then(
+      () => toast.success(`Copied ${text}`),
+      () => toast.error('Failed to copy.'),
+    );
+  }, [w3w]);
 
   return (
     <Container size="narrow" className="py-8">
@@ -134,6 +145,27 @@ export function ReportDetailPage() {
               ]}
               ariaLabel={`Map showing the location of ${report.title}`}
             />
+          </div>
+          {/* What3Words + coordinates row */}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p className="text-xs text-muted-foreground">
+              Coordinates:{' '}
+              <span className="font-medium text-foreground">
+                {report.lat.toFixed(4)}, {report.lng.toFixed(4)}
+              </span>
+            </p>
+            {w3w?.words && (
+              <button
+                type="button"
+                onClick={copyW3W}
+                title="Click to copy What3Words address"
+                className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-red-950 dark:text-red-300 dark:hover:bg-red-900"
+              >
+                <Icon name="grid-3x3" className="size-3" aria-hidden />
+                {w3w.words.startsWith('///') ? w3w.words : `///${w3w.words}`}
+                <Icon name="copy" className="ml-0.5 size-3 opacity-60" aria-hidden />
+              </button>
+            )}
           </div>
         </section>
 

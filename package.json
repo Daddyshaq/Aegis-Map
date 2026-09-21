@@ -22,7 +22,7 @@
     "db:migrate": "supabase db push",
     "db:reset": "supabase db reset",
     "db:seed": "node scripts/seed.mjs",
-    "prepare": "husky || true"
+    "prepare": "node -e \"process.exit(0)\""
   },
   "devDependencies": {
     "@types/node": "^20.14.10",

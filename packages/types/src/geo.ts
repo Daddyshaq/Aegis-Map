@@ -32,4 +32,21 @@ export interface GeocodeResult {
   lng: number;
   boundingBox?: BoundingBox;
   type?: string;
+  what3words?: string;
 }
+
+export interface What3WordsResult {
+  words: string;
+  lat: number;
+  lng: number;
+  country?: string;
+  nearestPlace?: string;
+  mapUrl?: string;
+}
+
+export interface What3WordsSuggestion {
+  words: string;
+  nearestPlace: string;
+  country: string;
+}
+

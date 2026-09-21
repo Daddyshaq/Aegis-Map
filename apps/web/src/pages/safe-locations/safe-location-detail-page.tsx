@@ -1,7 +1,7 @@
 import { SAFE_LOCATION_PRESENTATION } from '@crisis/config';
 import type { SafeLocation } from '@crisis/types';
 import type { SafeLocationInput } from '@crisis/validation';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { ErrorState } from '@/components/data-states';
@@ -37,6 +37,7 @@ import {
   useUpdateSafeLocation,
   useVerifySafeLocation,
 } from '@/hooks/use-safe-locations';
+import { useWhat3Words } from '@/hooks/use-w3w';
 import { formatDateTime } from '@/lib/format';
 import { OPERATING_STATUS_META } from '@/lib/labels';
 import { routes } from '@/lib/routes';
@@ -80,6 +81,16 @@ function SafeLocationDetail({ location }: { location: SafeLocation }) {
   const navigate = useNavigate();
   const operating = OPERATING_STATUS_META[location.operatingStatus];
   const preset = SAFE_LOCATION_PRESENTATION[location.type];
+  const { data: w3w } = useWhat3Words(location.lat, location.lng);
+
+  const copyW3W = useCallback(() => {
+    if (!w3w?.words) return;
+    const text = w3w.words.startsWith('///') ? w3w.words : `///${w3w.words}`;
+    navigator.clipboard.writeText(text).then(
+      () => {},
+      () => {},
+    );
+  }, [w3w]);
 
   const [editOpen, setEditOpen] = useState(false);
   const updateLocation = useUpdateSafeLocation();
@@ -195,6 +206,27 @@ function SafeLocationDetail({ location }: { location: SafeLocation }) {
             ]}
             ariaLabel={`Map showing the location of ${location.name}`}
           />
+        </div>
+        {/* What3Words + coordinates row */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="text-xs text-muted-foreground">
+            Coordinates:{' '}
+            <span className="font-medium text-foreground">
+              {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+            </span>
+          </p>
+          {w3w?.words && (
+            <button
+              type="button"
+              onClick={copyW3W}
+              title="Click to copy What3Words address"
+              className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-red-950 dark:text-red-300 dark:hover:bg-red-900"
+            >
+              <Icon name="grid-3x3" className="size-3" aria-hidden />
+              {w3w.words.startsWith('///') ? w3w.words : `///${w3w.words}`}
+              <Icon name="copy" className="ml-0.5 size-3 opacity-60" aria-hidden />
+            </button>
+          )}
         </div>
       </section>
 

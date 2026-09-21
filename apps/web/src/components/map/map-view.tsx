@@ -2,10 +2,14 @@ import type { Feature, FeatureCollection, LineString } from 'geojson';
 import maplibregl from 'maplibre-gl';
 import type { AddLayerObject, GeoJSONSource } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 
 import { env } from '@/lib/env';
 import { cn } from '@/lib/utils';
+
+const GoogleMapView = lazy(() =>
+  import('./google-map-view').then((mod) => ({ default: mod.GoogleMapView })),
+);
 
 export interface MapMarkerData {
   id: string;
@@ -55,12 +59,76 @@ export interface MapViewProps {
   ariaLabel?: string;
 }
 
+export type MapProvider = 'osm' | 'google';
+
 /**
- * Thin, declarative wrapper over MapLibre GL. The rest of the app never touches
- * the map SDK directly — it passes markers/handlers, so the underlying provider
- * (OpenStreetMap vector tiles by default) can be swapped without page changes.
+ * Unified MapView that supports switching between OSM/MapLibre and Google Maps.
+ * A discrete toggle button appears in the top-left corner when a Google Maps
+ * API key is configured, letting users switch providers without reloading.
  */
-export function MapView({
+export function MapView(props: MapViewProps) {
+  const googleAvailable = !!env.googleMaps.apiKey;
+  const [provider, setProvider] = useState<MapProvider>('osm');
+
+  const toggle = () => setProvider((p) => (p === 'osm' ? 'google' : 'osm'));
+
+  return (
+    <div className="relative h-full w-full">
+      {provider === 'google' ? (
+        <Suspense
+          fallback={
+            <div className="grid h-full w-full place-items-center bg-muted text-sm text-muted-foreground">
+              Loading Google Maps…
+            </div>
+          }
+        >
+          <GoogleMapView {...props} />
+        </Suspense>
+      ) : (
+        <MapLibreMapView {...props} />
+      )}
+
+      {/* Provider toggle — only shown when Google Maps is available */}
+      {googleAvailable && props.interactive !== false && (
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={`Switch to ${provider === 'osm' ? 'Google Maps' : 'OpenStreetMap'}`}
+          title={`Switch to ${provider === 'osm' ? 'Google Maps (Satellite)' : 'OpenStreetMap (Vector)'}`}
+          className={cn(
+            'absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded-lg bg-background/90 px-2.5 py-1.5 text-xs font-medium shadow-md backdrop-blur-sm transition-colors hover:bg-background',
+            'border border-border/60',
+          )}
+        >
+          {provider === 'osm' ? (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                <path d="M2 12h20" />
+              </svg>
+              Google Maps
+            </>
+          ) : (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                <polyline points="2 17 12 22 22 17" />
+                <polyline points="2 12 12 17 22 12" />
+              </svg>
+              OpenStreetMap
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Thin, declarative wrapper over MapLibre GL.
+ */
+function MapLibreMapView({
   className,
   center,
   zoom,
@@ -251,6 +319,7 @@ export function MapView({
     />
   );
 }
+
 
 const ROUTE_SOURCE = 'aegis-route-lines';
 const ROUTE_LAYER = 'aegis-route-lines-layer';

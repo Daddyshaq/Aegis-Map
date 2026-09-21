@@ -40,6 +40,10 @@ const envSchema = z.object({
   ROUTING_BASE_URL: z.string().url().default('https://router.project-osrm.org'),
   ROUTING_API_KEY: z.string().optional().default(''),
 
+  GOOGLE_MAPS_API_KEY: z.string().optional().default(''),
+  W3W_API_KEY: z.string().optional().default(''),
+  W3W_BASE_URL: z.string().url().default('https://api.what3words.com/v3'),
+
   VAPID_PUBLIC_KEY: z.string().optional().default(''),
   VAPID_PRIVATE_KEY: z.string().optional().default(''),
   VAPID_SUBJECT: z.string().default('mailto:alerts@aegismap.example'),
