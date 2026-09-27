@@ -28,21 +28,22 @@ export async function listSafeLocations(
       p_lng: query.lng,
       p_radius_m: query.radiusKm * 1000,
     });
-    if (error) throw error;
-    let rows = data ?? [];
-    if (query.type) rows = rows.filter((r) => r.type === query.type);
-    if (query.q) {
-      const needle = query.q.toLowerCase();
-      rows = rows.filter(
-        (r) =>
-          r.name.toLowerCase().includes(needle) ||
-          (r.address?.toLowerCase().includes(needle) ?? false),
-      );
+    if (!error && data) {
+      let rows = data ?? [];
+      if (query.type) rows = rows.filter((r) => r.type === query.type);
+      if (query.q) {
+        const needle = query.q.toLowerCase();
+        rows = rows.filter(
+          (r) =>
+            r.name.toLowerCase().includes(needle) ||
+            (r.address?.toLowerCase().includes(needle) ?? false),
+        );
+      }
+      const total = rows.length;
+      const { from, to } = pageRange(query.page, query.pageSize);
+      const pageRows = rows.slice(from, to + 1);
+      return paginated(pageRows.map(mapSafeLocation), query.page, query.pageSize, total);
     }
-    const total = rows.length;
-    const { from, to } = pageRange(query.page, query.pageSize);
-    const pageRows = rows.slice(from, to + 1);
-    return paginated(pageRows.map(mapSafeLocation), query.page, query.pageSize, total);
   }
 
   const { from, to } = pageRange(query.page, query.pageSize);

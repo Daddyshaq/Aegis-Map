@@ -2,7 +2,7 @@ import type { Feature, FeatureCollection, LineString } from 'geojson';
 import maplibregl from 'maplibre-gl';
 import type { AddLayerObject, GeoJSONSource } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 import { env } from '@/lib/env';
 import { cn } from '@/lib/utils';
@@ -68,9 +68,39 @@ export type MapProvider = 'osm' | 'google';
  */
 export function MapView(props: MapViewProps) {
   const googleAvailable = !!env.googleMaps.apiKey;
-  const [provider, setProvider] = useState<MapProvider>('osm');
+  const [provider, setProvider] = useState<MapProvider>(googleAvailable ? 'google' : 'osm');
+
+  // Compute bounding box from markers if fitBounds is not explicitly provided
+  const effectiveFitBounds = useMemo(() => {
+    if (props.fitBounds !== undefined) return props.fitBounds;
+    if (!props.markers || props.markers.length === 0) return null;
+    let minLat = 90;
+    let maxLat = -90;
+    let minLng = 180;
+    let maxLng = -180;
+    for (const m of props.markers) {
+      if (m.lat < minLat) minLat = m.lat;
+      if (m.lat > maxLat) maxLat = m.lat;
+      if (m.lng < minLng) minLng = m.lng;
+      if (m.lng > maxLng) maxLng = m.lng;
+    }
+    if (minLat === maxLat) {
+      minLat -= 0.05;
+      maxLat += 0.05;
+    }
+    if (minLng === maxLng) {
+      minLng -= 0.05;
+      maxLng += 0.05;
+    }
+    return { minLat, maxLat, minLng, maxLng };
+  }, [props.fitBounds, props.markers]);
 
   const toggle = () => setProvider((p) => (p === 'osm' ? 'google' : 'osm'));
+
+  const enrichedProps: MapViewProps = {
+    ...props,
+    fitBounds: effectiveFitBounds,
+  };
 
   return (
     <div className="relative h-full w-full">
@@ -82,10 +112,10 @@ export function MapView(props: MapViewProps) {
             </div>
           }
         >
-          <GoogleMapView {...props} />
+          <GoogleMapView {...enrichedProps} />
         </Suspense>
       ) : (
-        <MapLibreMapView {...props} />
+        <MapLibreMapView {...enrichedProps} />
       )}
 
       {/* Provider toggle — only shown when Google Maps is available */}

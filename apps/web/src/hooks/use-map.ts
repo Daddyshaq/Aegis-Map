@@ -22,6 +22,7 @@ export function useMapFeatures(bounds: MapBounds | null) {
     queryKey: queryKeys.map(bounds ?? undefined),
     queryFn: () => api.map.features(bounds as MapBounds),
     enabled: !!bounds,
-    staleTime: 20_000,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
   });
 }

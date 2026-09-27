@@ -205,13 +205,45 @@ export async function corroborateReport(reportId: string, user: AuthUser): Promi
 }
 
 export async function getMapFeatures(bounds: MapBoundsInput): Promise<CrisisMapFeature[]> {
+  let reports: any[] = [];
   const { data, error } = await supabaseAdmin.rpc('reports_in_bbox', {
     min_lat: bounds.minLat,
     min_lng: bounds.minLng,
     max_lat: bounds.maxLat,
     max_lng: bounds.maxLng,
   });
-  if (error) throw error;
+
+  if (!error && data) {
+    reports = data;
+  } else {
+    // Fallback if RPC function is missing or throws in Supabase
+    const minLat = Math.min(bounds.minLat, bounds.maxLat);
+    const maxLat = Math.max(bounds.minLat, bounds.maxLat);
+    const minLng = Math.min(bounds.minLng, bounds.maxLng);
+    const maxLng = Math.max(bounds.minLng, bounds.maxLng);
+
+    const { data: fallbackData, error: fallbackError } = await supabaseAdmin
+      .from('crisis_reports')
+      .select('*')
+      .gte('lat', minLat)
+      .lte('lat', maxLat)
+      .gte('lng', minLng)
+      .lte('lng', maxLng)
+      .neq('verification_status', 'REJECTED')
+      .neq('status', 'RESOLVED');
+
+    if (fallbackError) {
+      const { data: allActive } = await supabaseAdmin
+        .from('crisis_reports')
+        .select('*')
+        .neq('verification_status', 'REJECTED')
+        .neq('status', 'RESOLVED')
+        .limit(200);
+      reports = allActive ?? [];
+    } else {
+      reports = fallbackData ?? [];
+    }
+  }
 
   // The RPC returns raw report rows without the joined category slug. Resolve
   // slugs in a single lookup (there are only a handful of categories) so the map
@@ -225,7 +257,7 @@ export async function getMapFeatures(bounds: MapBoundsInput): Promise<CrisisMapF
   const severityRank: Record<string, number> = { LOW: 1, MODERATE: 2, HIGH: 3, CRITICAL: 4 };
   const minRank = bounds.minSeverity ? (severityRank[bounds.minSeverity] ?? 0) : 0;
 
-  return (data ?? [])
+  return (reports ?? [])
     .filter((r) => (bounds.categoryId ? r.category_id === bounds.categoryId : true))
     .filter((r) => (bounds.verifiedOnly ? r.verification_status === 'VERIFIED' : true))
     .filter((r) => severityRank[r.severity]! >= minRank)
@@ -411,7 +443,20 @@ export async function uploadEvidence(
     throw forbidden('You can only attach evidence to your own report');
   }
 
-  if (!ALL_ALLOWED_UPLOAD_TYPES.includes(file.mimeType)) {
+  // Normalize incoming MIME type and fallback to filename extension if needed
+  let mimeType = (file.mimeType || '').toLowerCase().trim();
+  if (mimeType === 'image/jpg') mimeType = 'image/jpeg';
+  if (!mimeType || mimeType === 'application/octet-stream') {
+    const extMatch = file.filename.split('.').pop()?.toLowerCase();
+    if (extMatch === 'jpg' || extMatch === 'jpeg') mimeType = 'image/jpeg';
+    else if (extMatch === 'png') mimeType = 'image/png';
+    else if (extMatch === 'webp') mimeType = 'image/webp';
+    else if (extMatch === 'heic') mimeType = 'image/heic';
+    else if (extMatch === 'mp4') mimeType = 'video/mp4';
+    else if (extMatch === 'mov') mimeType = 'video/quicktime';
+  }
+
+  if (!ALL_ALLOWED_UPLOAD_TYPES.includes(mimeType) && mimeType !== 'image/jpg') {
     throw badRequest(`Unsupported file type: ${file.mimeType}`);
   }
   if (file.buffer.byteLength > UPLOAD_LIMITS.maxBytes) {
@@ -425,21 +470,34 @@ export async function uploadEvidence(
     throw badRequest(`A report may have at most ${UPLOAD_LIMITS.maxFiles} evidence files`);
   }
 
-  const ext = MIME_EXT[file.mimeType] ?? 'bin';
+  // Ensure the evidence storage bucket exists in Supabase
+  try {
+    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+    if (!buckets?.some((b) => b.id === STORAGE_BUCKETS.evidence)) {
+      await supabaseAdmin.storage.createBucket(STORAGE_BUCKETS.evidence, {
+        public: false,
+        fileSizeLimit: UPLOAD_LIMITS.maxBytes,
+      });
+    }
+  } catch {
+    // Proceed to upload attempt
+  }
+
+  const ext = MIME_EXT[mimeType] ?? 'bin';
   const storagePath = `${user.id}/${reportId}/${randomUUID()}.${ext}`;
   const { error: uploadErr } = await supabaseAdmin.storage
     .from(STORAGE_BUCKETS.evidence)
-    .upload(storagePath, file.buffer, { contentType: file.mimeType, upsert: false });
+    .upload(storagePath, file.buffer, { contentType: mimeType, upsert: false });
   if (uploadErr) throw uploadErr;
 
-  const kind = kindForMime(file.mimeType);
+  const kind = kindForMime(mimeType);
   const { data: inserted, error: insertErr } = await supabaseAdmin
     .from('crisis_evidence')
     .insert({
       report_id: reportId,
       kind,
       storage_path: storagePath,
-      mime_type: file.mimeType,
+      mime_type: mimeType,
       size_bytes: file.buffer.byteLength,
     })
     .select('*')

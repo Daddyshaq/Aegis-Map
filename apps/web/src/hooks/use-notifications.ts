@@ -16,6 +16,7 @@ export function useNotifications(params?: NotificationsQuery) {
     queryKey: queryKeys.notifications.list(params),
     queryFn: () => api.notifications.list(params),
     placeholderData: keepPreviousData,
+    refetchInterval: 15_000,
   });
 }
 
@@ -25,7 +26,7 @@ export function useUnreadCount(enabled = true) {
     queryKey: queryKeys.notifications.unreadCount,
     queryFn: () => api.notifications.unreadCount(),
     enabled,
-    refetchInterval: 60_000,
+    refetchInterval: 10_000,
     select: (data) => data.count,
   });
 }

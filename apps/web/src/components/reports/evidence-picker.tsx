@@ -43,6 +43,21 @@ export function EvidencePicker({ files, onChange, disabled }: EvidencePickerProp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [files.map(fileKey).join('|')]);
 
+  const getNormalizedType = (file: File): string => {
+    let t = (file.type || '').toLowerCase();
+    if (t === 'image/jpg') return 'image/jpeg';
+    if (!t || t === 'application/octet-stream') {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+      if (ext === 'png') return 'image/png';
+      if (ext === 'webp') return 'image/webp';
+      if (ext === 'heic') return 'image/heic';
+      if (ext === 'mp4') return 'video/mp4';
+      if (ext === 'mov') return 'video/quicktime';
+    }
+    return t;
+  };
+
   const addFiles = (incoming: FileList | null) => {
     if (!incoming) return;
     const accepted: File[] = [...files];
@@ -53,7 +68,8 @@ export function EvidencePicker({ files, onChange, disabled }: EvidencePickerProp
         errors.push(`You can attach at most ${UPLOAD_LIMITS.maxFiles} files.`);
         break;
       }
-      if (!ALL_ALLOWED_UPLOAD_TYPES.includes(file.type)) {
+      const type = getNormalizedType(file);
+      if (!ALL_ALLOWED_UPLOAD_TYPES.includes(type) && type !== 'image/jpg') {
         errors.push(`${file.name}: unsupported file type.`);
         continue;
       }
@@ -80,7 +96,7 @@ export function EvidencePicker({ files, onChange, disabled }: EvidencePickerProp
         ref={inputRef}
         type="file"
         multiple
-        accept={ALL_ALLOWED_UPLOAD_TYPES.join(',')}
+        accept="image/*,video/*,audio/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.mp4,.mov,.mp3,.wav"
         className="sr-only"
         disabled={disabled}
         onChange={(e) => addFiles(e.target.files)}

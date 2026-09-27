@@ -156,17 +156,25 @@ export async function fanoutNearbyCrisis(report: CrisisReportRow): Promise<void>
   }
 }
 
-/** Fan an emergency alert out to opted-in users (optionally within its radius). */
+/** Fan an emergency alert out to all active users (unless explicitly opted out). */
 export async function fanoutEmergencyAlert(alert: AlertRow): Promise<void> {
-  const { data: prefs } = await supabaseAdmin
+  const { data: optOuts } = await supabaseAdmin
     .from('notification_preferences')
-    .select('user_id, radius_km')
-    .eq('emergency_alerts', true);
-  if (!prefs?.length) return;
+    .select('user_id')
+    .eq('emergency_alerts', false);
+  const optOutSet = new Set((optOuts ?? []).map((o) => o.user_id));
 
-  // For geographically scoped alerts, restrict to users with a saved location
-  // inside the alert radius; global alerts (no centre) go to everyone opted-in.
-  let recipients = prefs.map((p) => p.user_id);
+  const { data: profiles } = await supabaseAdmin
+    .from('profiles')
+    .select('id');
+
+  let recipients = (profiles ?? [])
+    .map((p) => p.id)
+    .filter((id) => !optOutSet.has(id));
+
+  if (!recipients.length) return;
+
+  // For geographically scoped alerts, if users have saved locations in the area, prioritize them
   if (alert.center_lat != null && alert.center_lng != null && alert.radius_km != null) {
     const box = boundingBoxAround(
       { lat: alert.center_lat, lng: alert.center_lng },
@@ -179,19 +187,24 @@ export async function fanoutEmergencyAlert(alert: AlertRow): Promise<void> {
       .lte('lat', box.maxLat)
       .gte('lng', box.minLng)
       .lte('lng', box.maxLng);
-    const inRadius = new Set(
-      (locations ?? [])
-        .filter(
-          (l) =>
-            haversineMeters(
-              { lat: alert.center_lat!, lng: alert.center_lng! },
-              { lat: l.lat, lng: l.lng },
-            ) <=
-            alert.radius_km! * 1000,
-        )
-        .map((l) => l.user_id),
-    );
-    recipients = recipients.filter((id) => inRadius.has(id));
+
+    if (locations && locations.length > 0) {
+      const inRadius = new Set(
+        locations
+          .filter(
+            (l) =>
+              haversineMeters(
+                { lat: alert.center_lat!, lng: alert.center_lng! },
+                { lat: l.lat, lng: l.lng },
+              ) <=
+              alert.radius_km! * 1000,
+          )
+          .map((l) => l.user_id),
+      );
+      if (inRadius.size > 0) {
+        recipients = recipients.filter((id) => inRadius.has(id));
+      }
+    }
   }
 
   await Promise.all(

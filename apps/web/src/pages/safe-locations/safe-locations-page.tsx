@@ -44,6 +44,7 @@ export function SafeLocationsPage() {
   const [search, setSearch] = useState('');
   const [type, setType] = useState<SafeLocationType | typeof ALL>(ALL);
   const [page, setPage] = useState(1);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [suggestOpen, setSuggestOpen] = useState(false);
 
   const debouncedSearch = useDebouncedValue(search, 400);
@@ -65,6 +66,7 @@ export function SafeLocationsPage() {
         lng: location.lng,
         color: SAFE_LOCATION_PRESENTATION[location.type].color,
         label: location.name,
+        onClick: setSelectedId,
       })),
     [items],
   );
@@ -161,7 +163,12 @@ export function SafeLocationsPage() {
 
         <div className="lg:sticky lg:top-20 lg:h-[calc(100dvh-8rem)]">
           <div className="h-72 overflow-hidden rounded-lg border lg:h-full">
-            <MapView markers={markers} ariaLabel="Map of safe locations" showGeolocate />
+            <MapView
+              markers={markers}
+              selectedId={selectedId}
+              ariaLabel="Map of safe locations"
+              showGeolocate
+            />
           </div>
         </div>
       </div>

@@ -17,6 +17,7 @@ export function useAlerts(params?: AlertsQuery) {
     queryKey: queryKeys.alerts.list(params),
     queryFn: () => api.alerts.list(params),
     placeholderData: keepPreviousData,
+    refetchInterval: 15_000,
   });
 }
 

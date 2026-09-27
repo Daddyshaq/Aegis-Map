@@ -43,6 +43,15 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       .subscribe();
     channels.push(safeLocations);
 
+    const notifications = supabase
+      .channel('public:notifications')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount });
+      })
+      .subscribe();
+    channels.push(notifications);
+
     return () => {
       for (const channel of channels) {
         void supabase.removeChannel(channel);

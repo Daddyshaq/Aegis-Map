@@ -88,43 +88,60 @@ export function LocationPicker({ value, onChange, onResolveName, className }: Lo
   };
 
   const useMyLocation = () => {
-    if (!('geolocation' in navigator)) {
-      toast.error('Geolocation is not available on this browser.');
-      return;
-    }
     setLocating(true);
 
-    const tryGetPosition = (highAccuracy: boolean) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
+    const fallbackToIp = () => {
+      fetch('https://ipwho.is/')
+        .then((r) => r.json())
+        .then((d) => {
           setLocating(false);
-          pick(pos.coords.latitude, pos.coords.longitude);
-          toast.success('Location set to your current position.');
-        },
-        (error) => {
-          // If high accuracy timed out (very common on laptops/PCs without GPS chips), fallback to network/IP location
-          if (highAccuracy && error.code === error.TIMEOUT) {
-            tryGetPosition(false);
-            return;
-          }
-          setLocating(false);
-          if (error.code === error.PERMISSION_DENIED) {
-            toast.error('Location permission was denied. Please click the tune/lock icon in your address bar to allow location.');
-          } else if (error.code === error.POSITION_UNAVAILABLE) {
-            toast.error('Location unavailable. Click anywhere on the map below to place your pin.');
+          if (d.success !== false && typeof d.latitude === 'number' && typeof d.longitude === 'number') {
+            const placeName = [d.city, d.region, d.country].filter(Boolean).join(', ');
+            pick(d.latitude, d.longitude, placeName);
+            toast.success(`Location set to ${placeName || 'your current area'}.`);
           } else {
-            toast.error('Could not determine your exact location. You can click on the map to set your pin.');
+            toast.error('Could not determine your location. Please click on the map to place your pin.');
           }
-        },
-        {
-          enableHighAccuracy: highAccuracy,
-          timeout: highAccuracy ? 8000 : 15000,
-          maximumAge: 60000,
-        },
-      );
+        })
+        .catch(() => {
+          setLocating(false);
+          toast.error('Could not determine your location. Please click on the map to place your pin.');
+        });
     };
 
-    tryGetPosition(true);
+    if (!('geolocation' in navigator)) {
+      fallbackToIp();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        pick(pos.coords.latitude, pos.coords.longitude);
+        toast.success('Location set to your current position.');
+      },
+      (error) => {
+        // If high accuracy timed out or unavailable, try low accuracy or IP fallback
+        if (error.code === error.TIMEOUT || error.code === error.POSITION_UNAVAILABLE) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              setLocating(false);
+              pick(pos.coords.latitude, pos.coords.longitude);
+              toast.success('Location set to your current position.');
+            },
+            () => fallbackToIp(),
+            { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 },
+          );
+        } else {
+          fallbackToIp();
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 60000,
+      },
+    );
   };
 
   const copyW3W = useCallback(() => {

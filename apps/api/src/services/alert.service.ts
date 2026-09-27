@@ -63,10 +63,8 @@ export async function createAlert(input: CreateAlertInput, user: AuthUser): Prom
     metadata: { type: data.type, severity: data.severity },
   });
 
-  // Push emergency/warning alerts out to opted-in users (best-effort).
-  if (data.type === 'EMERGENCY' || data.type === 'WARNING') {
-    await fanoutEmergencyAlert(data).catch(() => undefined);
-  }
+  // Push alerts out to users (best-effort).
+  await fanoutEmergencyAlert(data).catch(() => undefined);
   return mapAlert(data);
 }
 

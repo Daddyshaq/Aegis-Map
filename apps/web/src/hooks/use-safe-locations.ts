@@ -15,6 +15,7 @@ export function useSafeLocations(params?: Partial<SafeLocationQueryInput>) {
     queryKey: queryKeys.safeLocations.list(params),
     queryFn: () => api.safeLocations.list(params),
     placeholderData: keepPreviousData,
+    refetchInterval: 15_000,
   });
 }
 

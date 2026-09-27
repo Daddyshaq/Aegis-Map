@@ -184,8 +184,8 @@ function GoogleMapInner({
       disableDefaultUI={!interactive}
       zoomControl={interactive}
       mapTypeControl={interactive}
-      streetViewControl={false}
-      fullscreenControl={false}
+      streetViewControl={interactive}
+      fullscreenControl={interactive}
       style={{ width: '100%', height: '100%' }}
     >
       {/* Data markers */}

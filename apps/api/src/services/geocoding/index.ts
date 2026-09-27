@@ -1,7 +1,6 @@
 import type { GeocodeResult } from '@crisis/types';
 
 import { env } from '../../config/env';
-import { upstreamError } from '../../lib/errors';
 import { isWhat3Words, w3wService } from '../w3w.service';
 
 export interface GeocodingProvider {
@@ -30,56 +29,135 @@ interface GoogleGeocodeResult {
   types?: string[];
 }
 
-/** Google Maps Geocoding API provider. */
+/** Google Maps Geocoding & Places API provider with resilient fallbacks. */
 class GoogleGeocodingProvider implements GeocodingProvider {
   readonly name = 'google';
   constructor(private readonly apiKey: string) {}
 
   async search(query: string, limit = 5): Promise<GeocodeResult[]> {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${this.apiKey}`;
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      const data = (await res.json()) as { results?: GoogleGeocodeResult[]; status: string };
-      if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-        throw new Error(`Google Geocoding API status: ${data.status}`);
-      }
-      return (data.results ?? []).slice(0, limit).map((item) => ({
-        displayName: item.formatted_address,
-        lat: item.geometry.location.lat,
-        lng: item.geometry.location.lng,
-        type: item.types?.[0],
-        boundingBox: item.geometry.viewport
-          ? {
-              minLat: item.geometry.viewport.southwest.lat,
-              maxLat: item.geometry.viewport.northeast.lat,
-              minLng: item.geometry.viewport.southwest.lng,
-              maxLng: item.geometry.viewport.northeast.lng,
-            }
-          : undefined,
-      }));
-    } catch (err) {
-      throw upstreamError(`Google geocoding failed: ${(err as Error).message}`);
+    if (!this.apiKey) {
+      return searchPhoton(query, limit);
     }
+
+    // 1. Try Google Places Text Search first (handles places, businesses, landmarks, and addresses)
+    try {
+      const placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${this.apiKey}`;
+      const res = await fetch(placesUrl, { signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const data = (await res.json()) as {
+          results?: Array<{
+            name: string;
+            formatted_address: string;
+            geometry: { location: { lat: number; lng: number } };
+            types?: string[];
+          }>;
+          status: string;
+        };
+        if (data.status === 'OK' && data.results && data.results.length > 0) {
+          return data.results.slice(0, limit).map((p) => {
+            const displayName = p.formatted_address.startsWith(p.name)
+              ? p.formatted_address
+              : `${p.name}, ${p.formatted_address}`;
+            return {
+              displayName,
+              lat: p.geometry.location.lat,
+              lng: p.geometry.location.lng,
+              type: p.types?.[0],
+            };
+          });
+        }
+      }
+    } catch {
+      // Proceed to standard geocoding
+    }
+
+    // 2. Try Google Geocoding API
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${this.apiKey}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const data = (await res.json()) as { results?: GoogleGeocodeResult[]; status: string };
+        if (data.status === 'OK' && data.results && data.results.length > 0) {
+          return data.results.slice(0, limit).map((item) => ({
+            displayName: item.formatted_address,
+            lat: item.geometry.location.lat,
+            lng: item.geometry.location.lng,
+            type: item.types?.[0],
+            boundingBox: item.geometry.viewport
+              ? {
+                  minLat: item.geometry.viewport.southwest.lat,
+                  maxLat: item.geometry.viewport.northeast.lat,
+                  minLng: item.geometry.viewport.southwest.lng,
+                  maxLng: item.geometry.viewport.northeast.lng,
+                }
+              : undefined,
+          }));
+        }
+      }
+    } catch {
+      // Proceed to fallback
+    }
+
+    // 3. Fallback to Photon (OSM) so searches never fail
+    try {
+      const photonResults = await searchPhoton(query, limit);
+      if (photonResults.length > 0) return photonResults;
+    } catch {
+      // Return empty
+    }
+
+    return [];
   }
 
   async reverse(lat: number, lng: number): Promise<GeocodeResult | null> {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${this.apiKey}`;
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      const data = (await res.json()) as { results?: GoogleGeocodeResult[]; status: string };
-      if (data.status !== 'OK' || !data.results?.[0]) return null;
-      const item = data.results[0];
-      return {
-        displayName: item.formatted_address,
-        lat: item.geometry.location.lat,
-        lng: item.geometry.location.lng,
-        type: item.types?.[0],
-      };
-    } catch (err) {
-      throw upstreamError(`Google reverse geocoding failed: ${(err as Error).message}`);
+    if (this.apiKey) {
+      try {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${this.apiKey}`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+        if (res.ok) {
+          const data = (await res.json()) as { results?: GoogleGeocodeResult[]; status: string };
+          if (data.status === 'OK' && data.results?.[0]) {
+            const item = data.results[0];
+            return {
+              displayName: item.formatted_address,
+              lat: item.geometry.location.lat,
+              lng: item.geometry.location.lng,
+              type: item.types?.[0],
+            };
+          }
+        }
+      } catch {
+        // Fallback below
+      }
     }
+
+    // Fallback to Photon reverse
+    try {
+      const photonUrl = `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`;
+      const res = await fetch(photonUrl, { signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const data = (await res.json()) as { features?: PhotonFeature[] };
+        const f = data.features?.[0];
+        if (f) {
+          const p = f.properties;
+          const parts = [p.name, p.street, p.city, p.state, p.country].filter(Boolean);
+          return {
+            displayName: parts.join(', ') || `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+            lat: f.geometry.coordinates[1],
+            lng: f.geometry.coordinates[0],
+            type: p.type,
+          };
+        }
+      }
+    } catch {
+      // Fallback below
+    }
+
+    return {
+      displayName: `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+      lat,
+      lng,
+    };
   }
 }
 
