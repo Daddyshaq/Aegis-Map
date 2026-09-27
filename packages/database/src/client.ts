@@ -4,12 +4,16 @@ import type { Database } from './types';
 
 export type TypedSupabaseClient = SupabaseClient<Database>;
 
+function cleanSupabaseUrl(url: string): string {
+  return url.trim().replace(/\/+$/, '').replace(/\/(rest|auth)\/v1\/?$/, '');
+}
+
 /**
  * Browser/anon client. Safe for the frontend: relies entirely on RLS.
  * Persists the session so Supabase Auth survives reloads.
  */
 export function createBrowserSupabase(url: string, anonKey: string): TypedSupabaseClient {
-  return createClient<Database>(url, anonKey, {
+  return createClient<Database>(cleanSupabaseUrl(url), anonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
@@ -27,7 +31,7 @@ export function createUserScopedSupabase(
   anonKey: string,
   accessToken: string,
 ): TypedSupabaseClient {
-  return createClient<Database>(url, anonKey, {
+  return createClient<Database>(cleanSupabaseUrl(url), anonKey, {
     global: { headers: { Authorization: `Bearer ${accessToken}` } },
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
@@ -38,7 +42,7 @@ export function createUserScopedSupabase(
  * a client built from it to the browser. Use only for trusted, audited work.
  */
 export function createServiceSupabase(url: string, serviceRoleKey: string): TypedSupabaseClient {
-  return createClient<Database>(url, serviceRoleKey, {
+  return createClient<Database>(cleanSupabaseUrl(url), serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
 }

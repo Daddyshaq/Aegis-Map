@@ -31,7 +31,10 @@ const envSchema = z.object({
   // How often the background sweep expires stale reports (minutes). 0 disables it.
   EXPIRY_SWEEP_MINUTES: z.coerce.number().int().min(0).default(15),
 
-  SUPABASE_URL: z.string().url(),
+  SUPABASE_URL: z
+    .string()
+    .url()
+    .transform((val) => val.trim().replace(/\/+$/, '').replace(/\/(rest|auth)\/v1\/?$/, '')),
   SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   SUPABASE_JWT_SECRET: z.string().min(16),

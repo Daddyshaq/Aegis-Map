@@ -43,8 +43,14 @@ function optionalString(value: string | undefined): string | null {
   return value;
 }
 
+function cleanSupabaseUrl(value: string | undefined): string {
+  const url = required('VITE_SUPABASE_URL', value).trim();
+  // Strip trailing slashes and common accidental copy-pastes like '/rest/v1' or '/auth/v1'
+  return url.replace(/\/+$/, '').replace(/\/(rest|auth)\/v1\/?$/, '');
+}
+
 export const env: AppEnv = {
-  supabaseUrl: required('VITE_SUPABASE_URL', import.meta.env.VITE_SUPABASE_URL),
+  supabaseUrl: cleanSupabaseUrl(import.meta.env.VITE_SUPABASE_URL),
   supabaseAnonKey: required('VITE_SUPABASE_ANON_KEY', import.meta.env.VITE_SUPABASE_ANON_KEY),
   // Normalise away a trailing slash so path joins never double up.
   apiUrl: required('VITE_API_URL', import.meta.env.VITE_API_URL).replace(/\/+$/, ''),

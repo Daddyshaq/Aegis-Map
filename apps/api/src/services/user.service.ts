@@ -21,8 +21,51 @@ export async function getProfile(userId: string): Promise<Profile> {
     .eq('id', userId)
     .maybeSingle();
   if (error) throw error;
-  if (!data) throw notFound('Profile not found');
-  return mapProfile(data);
+  if (data) return mapProfile(data);
+
+  // Self-heal: If profile row is missing (e.g. trigger didn't fire), create it from auth.users
+  const { data: authUserRes, error: authErr } = await supabaseAdmin.auth.admin.getUserById(userId);
+  if (authErr || !authUserRes?.user) {
+    throw notFound('Profile not found');
+  }
+
+  const authUser = authUserRes.user;
+  const fullName =
+    (authUser.user_metadata?.full_name as string) ||
+    (authUser.user_metadata?.name as string) ||
+    authUser.email?.split('@')[0] ||
+    'User';
+
+  const { data: created, error: insertErr } = await supabaseAdmin
+    .from('profiles')
+    .insert({
+      id: userId,
+      email: authUser.email ?? '',
+      full_name: fullName,
+      role: 'citizen',
+      account_status: 'ACTIVE',
+    })
+    .select('*')
+    .single();
+
+  if (insertErr || !created) {
+    throw notFound('Profile not found');
+  }
+
+  // Ensure default notification preferences exist
+  const { data: prefExists } = await supabaseAdmin
+    .from('notification_preferences')
+    .select('user_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!prefExists) {
+    await supabaseAdmin
+      .from('notification_preferences')
+      .insert({ user_id: userId });
+  }
+
+  return mapProfile(created);
 }
 
 export async function updateProfile(userId: string, input: UpdateProfileInput): Promise<Profile> {
