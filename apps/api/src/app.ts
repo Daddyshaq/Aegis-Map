@@ -29,9 +29,32 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(helmet, { contentSecurityPolicy: false, crossOriginResourcePolicy: false });
 
   await app.register(cors, {
-    origin: corsOrigins.includes('*') ? true : corsOrigins,
+    origin: (origin, cb) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+      if (!origin) return cb(null, true);
+      if (corsOrigins.includes('*')) return cb(null, true);
+
+      const cleanOrigin = origin.replace(/\/+$/, '');
+      const matched = corsOrigins.some(
+        (allowed) => allowed.toLowerCase().replace(/\/+$/, '') === cleanOrigin.toLowerCase(),
+      );
+      if (matched) return cb(null, true);
+
+      // Automatically allow Vercel production & preview deployments (*.vercel.app)
+      if (/^https:\/\/[a-z0-9-]+(\.vercel\.app)$/i.test(cleanOrigin)) {
+        return cb(null, true);
+      }
+
+      // Automatically allow localhost development
+      if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(cleanOrigin)) {
+        return cb(null, true);
+      }
+
+      cb(null, false);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-application', 'x-request-id', 'Accept'],
   });
 
   await app.register(rateLimit, {

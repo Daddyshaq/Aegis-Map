@@ -19,7 +19,9 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(() => (process.env.PORT ? Number(process.env.PORT) : 4000)),
-  CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  CORS_ORIGIN: z
+    .string()
+    .default('https://aegis-maps.vercel.app,http://localhost:5173,http://localhost:3000'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   RATE_LIMIT_WINDOW: z.string().default('1 minute'),
