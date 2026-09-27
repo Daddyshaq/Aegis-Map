@@ -3,7 +3,8 @@ import { OPERATING_STATUSES, SAFE_LOCATION_TYPES } from '@crisis/types';
 import { safeLocationSchema, type SafeLocationInput } from '@crisis/validation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
+import { toast } from 'sonner';
 
 import { Icon } from '@/components/icon';
 import { LocationPicker } from '@/components/map/location-picker';
@@ -53,15 +54,16 @@ export function SafeLocationForm({
   onCancel,
 }: SafeLocationFormProps) {
   const form = useForm<SafeLocationInput>({
-    resolver: zodResolver(safeLocationSchema),
+    resolver: zodResolver(safeLocationSchema) as unknown as Resolver<SafeLocationInput>,
     defaultValues: {
       name: '',
+      type: 'SHELTER',
       description: '',
       address: '',
       phone: '',
       openingHours: '',
       capacity: null,
-      operatingStatus: 'UNKNOWN',
+      operatingStatus: 'OPEN',
       facilities: [],
       ...defaultValues,
     },
@@ -74,23 +76,34 @@ export function SafeLocationForm({
   const lat = form.watch('lat');
   const lng = form.watch('lng');
 
-  const submit = form.handleSubmit((values) => {
-    const facilities = facilitiesText
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .slice(0, 30);
+  const submit = form.handleSubmit(
+    (values) => {
+      const facilities = facilitiesText
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 30);
 
-    onSubmit({
-      ...values,
-      description: emptyToNull(values.description),
-      address: emptyToNull(values.address),
-      phone: emptyToNull(values.phone),
-      openingHours: emptyToNull(values.openingHours),
-      capacity: values.capacity ?? null,
-      facilities,
-    });
-  });
+      onSubmit({
+        ...values,
+        description: emptyToNull(values.description),
+        address: emptyToNull(values.address),
+        phone: emptyToNull(values.phone),
+        openingHours: emptyToNull(values.openingHours),
+        capacity: values.capacity ?? null,
+        facilities,
+      });
+    },
+    (errors) => {
+      if (errors.lat || errors.lng) {
+        toast.error('Please choose a location on the map.');
+      } else if (errors.name) {
+        toast.error('Please provide a name for this safe location.');
+      } else {
+        toast.error('Please fill in the required fields.');
+      }
+    },
+  );
 
   return (
     <Form {...form}>

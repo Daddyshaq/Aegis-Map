@@ -41,3 +41,4 @@ apps/web/public/workbox-*.js
 # Misc
 *.local
 .cache/
+*.har

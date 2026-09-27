@@ -89,25 +89,42 @@ export function LocationPicker({ value, onChange, onResolveName, className }: Lo
 
   const useMyLocation = () => {
     if (!('geolocation' in navigator)) {
-      toast.error('Geolocation is not available on this device.');
+      toast.error('Geolocation is not available on this browser.');
       return;
     }
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocating(false);
-        pick(pos.coords.latitude, pos.coords.longitude);
-      },
-      (error) => {
-        setLocating(false);
-        toast.error(
-          error.code === error.PERMISSION_DENIED
-            ? 'Location permission denied.'
-            : 'Could not determine your location.',
-        );
-      },
-      { enableHighAccuracy: true, timeout: 10_000 },
-    );
+
+    const tryGetPosition = (highAccuracy: boolean) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocating(false);
+          pick(pos.coords.latitude, pos.coords.longitude);
+          toast.success('Location set to your current position.');
+        },
+        (error) => {
+          // If high accuracy timed out (very common on laptops/PCs without GPS chips), fallback to network/IP location
+          if (highAccuracy && error.code === error.TIMEOUT) {
+            tryGetPosition(false);
+            return;
+          }
+          setLocating(false);
+          if (error.code === error.PERMISSION_DENIED) {
+            toast.error('Location permission was denied. Please click the tune/lock icon in your address bar to allow location.');
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            toast.error('Location unavailable. Click anywhere on the map below to place your pin.');
+          } else {
+            toast.error('Could not determine your exact location. You can click on the map to set your pin.');
+          }
+        },
+        {
+          enableHighAccuracy: highAccuracy,
+          timeout: highAccuracy ? 8000 : 15000,
+          maximumAge: 60000,
+        },
+      );
+    };
+
+    tryGetPosition(true);
   };
 
   const copyW3W = useCallback(() => {

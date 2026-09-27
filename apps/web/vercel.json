@@ -6,7 +6,7 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/((?!assets/|sw.js|favicon.ico|manifest.webmanifest|apple-touch-icon.png|icons/).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],

@@ -11,6 +11,7 @@ import { writeAudit } from '../lib/audit';
 import { notFound } from '../lib/errors';
 import { paginated, pageRange } from '../lib/response';
 import { supabaseAdmin } from '../lib/supabase';
+import { getProfile } from './user.service';
 
 /** Normalise the empty-string phone (allowed by the schema) to null. */
 function cleanPhone(phone: string | null | undefined): string | null {
@@ -72,6 +73,9 @@ export async function createSafeLocation(
   input: SafeLocationInput,
   user: AuthUser,
 ): Promise<SafeLocation> {
+  // Ensure creator's profile exists in the DB so the foreign key constraint is satisfied.
+  await getProfile(user.id);
+
   // Moderators create verified entries; citizen suggestions await review.
   const moderator = isModerator(user.role);
   const { data, error } = await supabaseAdmin

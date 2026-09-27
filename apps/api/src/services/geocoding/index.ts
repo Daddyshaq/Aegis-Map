@@ -83,38 +83,107 @@ class GoogleGeocodingProvider implements GeocodingProvider {
   }
 }
 
-/** Nominatim (OpenStreetMap) geocoder. Respects usage policy via User-Agent. */
+interface PhotonFeature {
+  geometry: { coordinates: [number, number] };
+  properties: {
+    name?: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    type?: string;
+  };
+}
+
+async function searchPhoton(query: string, limit = 5): Promise<GeocodeResult[]> {
+  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=${limit}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+  if (!res.ok) return [];
+  const data = (await res.json()) as { features?: PhotonFeature[] };
+  return (data.features ?? []).map((f) => {
+    const p = f.properties;
+    const parts = [p.name, p.street, p.city, p.state, p.country].filter(Boolean);
+    return {
+      displayName: parts.join(', ') || 'Unknown Location',
+      lat: f.geometry.coordinates[1],
+      lng: f.geometry.coordinates[0],
+      type: p.type,
+    };
+  });
+}
+
+/** Nominatim (OpenStreetMap) geocoder with automatic Photon fallback. */
 class NominatimProvider implements GeocodingProvider {
   readonly name = 'nominatim';
   constructor(private readonly baseUrl: string) {}
 
   private headers(): Record<string, string> {
-    return { 'User-Agent': 'AegisMap/1.0 (+https://aegismap.example)', 'Accept-Language': 'en' };
+    return {
+      'User-Agent': 'AegisMap-CrisisReporting/1.0 (https://aegis-maps.vercel.app; panshak4k@gmail.com)',
+      'Accept-Language': 'en',
+    };
   }
 
   async search(query: string, limit = 5): Promise<GeocodeResult[]> {
     const url = `${this.baseUrl}/search?q=${encodeURIComponent(query)}&format=jsonv2&limit=${limit}&addressdetails=0`;
     try {
-      const res = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(8000) });
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      const items = (await res.json()) as NominatimItem[];
-      return items.map(toResult);
-    } catch (err) {
-      throw upstreamError(`Geocoding failed: ${(err as Error).message}`);
+      const res = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const items = (await res.json()) as NominatimItem[];
+        if (items.length > 0) return items.map(toResult);
+      }
+    } catch {
+      // Fallback below
     }
+
+    try {
+      const photonResults = await searchPhoton(query, limit);
+      if (photonResults.length > 0) return photonResults;
+    } catch {
+      // Fallback completed
+    }
+
+    return [];
   }
 
   async reverse(lat: number, lng: number): Promise<GeocodeResult | null> {
     const url = `${this.baseUrl}/reverse?lat=${lat}&lon=${lng}&format=jsonv2`;
     try {
-      const res = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(8000) });
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      const item = (await res.json()) as NominatimItem & { error?: string };
-      if (item.error) return null;
-      return toResult(item);
-    } catch (err) {
-      throw upstreamError(`Reverse geocoding failed: ${(err as Error).message}`);
+      const res = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const item = (await res.json()) as NominatimItem & { error?: string };
+        if (!item.error) return toResult(item);
+      }
+    } catch {
+      // Fallback below
     }
+
+    try {
+      const photonUrl = `https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`;
+      const res = await fetch(photonUrl, { signal: AbortSignal.timeout(6000) });
+      if (res.ok) {
+        const data = (await res.json()) as { features?: PhotonFeature[] };
+        const f = data.features?.[0];
+        if (f) {
+          const p = f.properties;
+          const parts = [p.name, p.street, p.city, p.state, p.country].filter(Boolean);
+          return {
+            displayName: parts.join(', ') || `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+            lat: f.geometry.coordinates[1],
+            lng: f.geometry.coordinates[0],
+            type: p.type,
+          };
+        }
+      }
+    } catch {
+      // Fallback completed
+    }
+
+    return {
+      displayName: `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+      lat,
+      lng,
+    };
   }
 }
 

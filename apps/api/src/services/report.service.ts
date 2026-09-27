@@ -30,6 +30,7 @@ import type {
 import { AppError, badRequest, forbidden, notFound, tooManyRequests } from '../lib/errors';
 import { paginated, pageRange } from '../lib/response';
 import { supabaseAdmin } from '../lib/supabase';
+import { getProfile } from './user.service';
 
 import { notifyReportReceived } from './notification.service';
 
@@ -106,6 +107,9 @@ export async function createReport(
   input: CreateReportInput,
   user: AuthUser,
 ): Promise<CrisisReport> {
+  // Ensure creator's profile exists in the DB so the foreign key constraint is satisfied.
+  await getProfile(user.id);
+
   await enforceThrottle(user.id);
   const ttlHours = await loadCategoryTtl(input.categoryId);
   const reportedAt = input.reportedAt ?? new Date().toISOString();

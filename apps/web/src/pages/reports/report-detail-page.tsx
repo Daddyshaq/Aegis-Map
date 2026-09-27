@@ -39,6 +39,16 @@ export function ReportDetailPage() {
   const { data: report, isLoading, isError, error, refetch } = useReport(id);
   const { isAuthenticated, isModerator, profile } = useAuth();
   const corroborate = useCorroborateReport();
+  const { data: w3w } = useWhat3Words(report?.lat, report?.lng);
+
+  const copyW3W = useCallback(() => {
+    if (!w3w?.words) return;
+    const text = w3w.words.startsWith('///') ? w3w.words : `///${w3w.words}`;
+    navigator.clipboard.writeText(text).then(
+      () => toast.success(`Copied ${text}`),
+      () => toast.error('Failed to copy.'),
+    );
+  }, [w3w]);
 
   if (isLoading) return <ReportDetailSkeleton />;
   if (isError || !report) {
@@ -53,16 +63,6 @@ export function ReportDetailPage() {
   const risk = RISK_PRESENTATION[report.riskLevel];
   const isOwner = !!profile && profile.id === report.reportedBy;
   const canCorroborate = isAuthenticated && !isOwner;
-  const { data: w3w } = useWhat3Words(report.lat, report.lng);
-
-  const copyW3W = useCallback(() => {
-    if (!w3w?.words) return;
-    const text = w3w.words.startsWith('///') ? w3w.words : `///${w3w.words}`;
-    navigator.clipboard.writeText(text).then(
-      () => toast.success(`Copied ${text}`),
-      () => toast.error('Failed to copy.'),
-    );
-  }, [w3w]);
 
   return (
     <Container size="narrow" className="py-8">

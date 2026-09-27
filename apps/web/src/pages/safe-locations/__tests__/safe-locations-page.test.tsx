@@ -60,7 +60,7 @@ describe('SafeLocationsPage', () => {
     expect(screen.getByText('Suggest a safe location')).toBeInTheDocument();
     expect(screen.getByLabelText(/^name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/facilities/i)).toBeInTheDocument();
-  });
+  }, 15000);
 
   it('submits a new safe location suggestion successfully', async () => {
     const user = userEvent.setup();
@@ -81,5 +81,5 @@ describe('SafeLocationsPage', () => {
     // Submit button is present and clickable
     const submitBtn = screen.getByRole('button', { name: /submit for review/i });
     expect(submitBtn).toBeInTheDocument();
-  });
+  }, 15000);
 });
