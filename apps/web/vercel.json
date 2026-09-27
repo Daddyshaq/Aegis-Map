@@ -3,7 +3,6 @@
   "buildCommand": "cd ../.. && pnpm --filter @crisis/web build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/(.*)",
