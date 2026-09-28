@@ -19,9 +19,7 @@ export function InstallPromptBanner() {
   const [isInstalling, setIsInstalling] = useState(false);
 
   if (isInstalled || isDismissed || !isInstallable) {
-    return (
-      <IosInstallDialog open={showIOSGuide} onOpenChange={setShowIOSGuide} />
-    );
+    return <IosInstallDialog open={showIOSGuide} onOpenChange={setShowIOSGuide} />;
   }
 
   const handleInstallClick = async () => {
@@ -41,12 +39,7 @@ export function InstallPromptBanner() {
       >
         <div className="flex items-start gap-3.5">
           <div className="relative size-12 shrink-0 overflow-hidden rounded-xl bg-slate-900 shadow-md">
-            <img
-              src="/icons/icon-192.png"
-              alt=""
-              className="size-full object-cover"
-              aria-hidden
-            />
+            <img src="/icons/icon-192.png" alt="" className="size-full object-cover" aria-hidden />
           </div>
 
           <div className="min-w-0 flex-1">
@@ -64,8 +57,8 @@ export function InstallPromptBanner() {
               </button>
             </div>
             <p className="mt-1 text-xs text-muted-foreground leading-normal">
-              Install our official mobile app for instant one-tap crisis reporting, offline maps, and
-              live disaster alerts.
+              Install our official mobile app for instant one-tap crisis reporting, offline maps,
+              and live disaster alerts.
             </p>
 
             <div className="mt-3 flex items-center gap-2">

@@ -49,4 +49,3 @@ export interface What3WordsSuggestion {
   nearestPlace: string;
   country: string;
 }
-

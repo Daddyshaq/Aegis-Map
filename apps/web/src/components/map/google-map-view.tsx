@@ -165,13 +165,10 @@ function GoogleMapInner({
     };
   }, [map, _lines]);
 
-  const handlePickerDragEnd = useCallback(
-    (e: google.maps.MapMouseEvent) => {
-      if (!e.latLng) return;
-      pickerRef.current?.({ lat: e.latLng.lat(), lng: e.latLng.lng() });
-    },
-    [],
-  );
+  const handlePickerDragEnd = useCallback((e: google.maps.MapMouseEvent) => {
+    if (!e.latLng) return;
+    pickerRef.current?.({ lat: e.latLng.lat(), lng: e.latLng.lng() });
+  }, []);
 
   return (
     <Map

@@ -9,7 +9,15 @@ import {
 import { z } from 'zod';
 
 import { severitySchema } from './crisis';
-import { isoDateTime, latitude, latitudeParam, longitude, longitudeParam, nonEmpty, phone } from './primitives';
+import {
+  isoDateTime,
+  latitude,
+  latitudeParam,
+  longitude,
+  longitudeParam,
+  nonEmpty,
+  phone,
+} from './primitives';
 
 const tuple = <T extends string>(values: T[]) => values as [T, ...T[]];
 

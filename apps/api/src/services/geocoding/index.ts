@@ -197,7 +197,8 @@ class NominatimProvider implements GeocodingProvider {
 
   private headers(): Record<string, string> {
     return {
-      'User-Agent': 'AegisMap-CrisisReporting/1.0 (https://aegis-maps.vercel.app; panshak4k@gmail.com)',
+      'User-Agent':
+        'AegisMap-CrisisReporting/1.0 (https://aegis-maps.vercel.app; panshak4k@gmail.com)',
       'Accept-Language': 'en',
     };
   }
@@ -344,4 +345,3 @@ export function getGeocodingProvider(): GeocodingProvider {
   provider = new CompositeGeocodingProvider(baseProvider);
   return provider;
 }
-

@@ -3,7 +3,8 @@ import type { What3WordsResult, What3WordsSuggestion } from '@crisis/types';
 import { env } from '../config/env';
 import { badRequest, upstreamError } from '../lib/errors';
 
-const W3W_REGEX = /^(\/{3})?([a-zA-Z\u00C0-\u017F]+)\.([a-zA-Z\u00C0-\u017F]+)\.([a-zA-Z\u00C0-\u017F]+)$/;
+const W3W_REGEX =
+  /^(\/{3})?([a-zA-Z\u00C0-\u017F]+)\.([a-zA-Z\u00C0-\u017F]+)\.([a-zA-Z\u00C0-\u017F]+)$/;
 
 export function isWhat3Words(input: string): boolean {
   return W3W_REGEX.test(input.trim());
@@ -17,10 +18,42 @@ export function cleanWhat3Words(input: string): string {
 
 /** Simple word list used for deterministic offline/test fallback when no API key is provided. */
 const WORD_LIST = [
-  'apple', 'bridge', 'castle', 'dawn', 'eagle', 'forest', 'harbor', 'island', 'jungle',
-  'knight', 'lake', 'mountain', 'nest', 'ocean', 'path', 'river', 'stone', 'tower',
-  'valley', 'water', 'beacon', 'breeze', 'cloud', 'delta', 'echo', 'frost', 'glade',
-  'haven', 'meadow', 'oasis', 'peak', 'ridge', 'stream', 'timber', 'summit', 'field',
+  'apple',
+  'bridge',
+  'castle',
+  'dawn',
+  'eagle',
+  'forest',
+  'harbor',
+  'island',
+  'jungle',
+  'knight',
+  'lake',
+  'mountain',
+  'nest',
+  'ocean',
+  'path',
+  'river',
+  'stone',
+  'tower',
+  'valley',
+  'water',
+  'beacon',
+  'breeze',
+  'cloud',
+  'delta',
+  'echo',
+  'frost',
+  'glade',
+  'haven',
+  'meadow',
+  'oasis',
+  'peak',
+  'ridge',
+  'stream',
+  'timber',
+  'summit',
+  'field',
 ];
 
 function pseudoHash(str: string): number {
@@ -44,7 +77,9 @@ export class What3WordsService {
   async convertToCoordinates(rawWords: string): Promise<What3WordsResult> {
     const words = cleanWhat3Words(rawWords);
     if (!words.includes('.')) {
-      throw badRequest('Invalid What3Words address format. Expected word.word.word or ///word.word.word');
+      throw badRequest(
+        'Invalid What3Words address format. Expected word.word.word or ///word.word.word',
+      );
     }
 
     if (this.apiKey) {

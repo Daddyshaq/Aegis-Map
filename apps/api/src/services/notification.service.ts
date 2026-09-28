@@ -164,13 +164,9 @@ export async function fanoutEmergencyAlert(alert: AlertRow): Promise<void> {
     .eq('emergency_alerts', false);
   const optOutSet = new Set((optOuts ?? []).map((o) => o.user_id));
 
-  const { data: profiles } = await supabaseAdmin
-    .from('profiles')
-    .select('id');
+  const { data: profiles } = await supabaseAdmin.from('profiles').select('id');
 
-  let recipients = (profiles ?? [])
-    .map((p) => p.id)
-    .filter((id) => !optOutSet.has(id));
+  let recipients = (profiles ?? []).map((p) => p.id).filter((id) => !optOutSet.has(id));
 
   if (!recipients.length) return;
 

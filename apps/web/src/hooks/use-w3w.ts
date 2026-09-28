@@ -7,7 +7,11 @@ import { queryKeys } from '@/lib/query-keys';
  * Fetch 3-word address (What3Words) for coordinates (e.g. for displaying pin address).
  */
 export function useWhat3Words(lat: number | null | undefined, lng: number | null | undefined) {
-  const enabled = typeof lat === 'number' && typeof lng === 'number' && Number.isFinite(lat) && Number.isFinite(lng);
+  const enabled =
+    typeof lat === 'number' &&
+    typeof lng === 'number' &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng);
   return useQuery({
     queryKey: queryKeys.w3w.words(lat ?? 0, lng ?? 0),
     queryFn: () => api.w3w.convertTo3wa(lat as number, lng as number),

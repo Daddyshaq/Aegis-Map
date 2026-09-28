@@ -60,9 +60,7 @@ export async function getProfile(userId: string): Promise<Profile> {
     .maybeSingle();
 
   if (!prefExists) {
-    await supabaseAdmin
-      .from('notification_preferences')
-      .insert({ user_id: userId });
+    await supabaseAdmin.from('notification_preferences').insert({ user_id: userId });
   }
 
   return mapProfile(created);

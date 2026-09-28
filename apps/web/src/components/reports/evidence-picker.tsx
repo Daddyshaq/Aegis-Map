@@ -44,7 +44,7 @@ export function EvidencePicker({ files, onChange, disabled }: EvidencePickerProp
   }, [files.map(fileKey).join('|')]);
 
   const getNormalizedType = (file: File): string => {
-    let t = (file.type || '').toLowerCase();
+    const t = (file.type || '').toLowerCase();
     if (t === 'image/jpg') return 'image/jpeg';
     if (!t || t === 'application/octet-stream') {
       const ext = file.name.split('.').pop()?.toLowerCase();

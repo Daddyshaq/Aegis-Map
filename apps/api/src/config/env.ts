@@ -36,7 +36,12 @@ const envSchema = z.object({
   SUPABASE_URL: z
     .string()
     .url()
-    .transform((val) => val.trim().replace(/\/+$/, '').replace(/\/(rest|auth)\/v1\/?$/, '')),
+    .transform((val) =>
+      val
+        .trim()
+        .replace(/\/+$/, '')
+        .replace(/\/(rest|auth)\/v1\/?$/, ''),
+    ),
   SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   SUPABASE_JWT_SECRET: z.string().min(16),

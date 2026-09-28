@@ -12,7 +12,15 @@ import {
 } from '@crisis/types';
 import { z } from 'zod';
 
-import { isoDateTime, latitude, latitudeParam, longitude, longitudeParam, nonEmpty, uuid } from './primitives';
+import {
+  isoDateTime,
+  latitude,
+  latitudeParam,
+  longitude,
+  longitudeParam,
+  nonEmpty,
+  uuid,
+} from './primitives';
 
 const tuple = <T extends string>(values: T[]) => values as [T, ...T[]];
 

@@ -7,7 +7,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LocationPicker } from '../location-picker';
 
 vi.mock('@/components/map/map-view', () => ({
-  MapView: ({ onPickerChange }: { onPickerChange?: (pos: { lat: number; lng: number }) => void }) => (
+  MapView: ({
+    onPickerChange,
+  }: {
+    onPickerChange?: (pos: { lat: number; lng: number }) => void;
+  }) => (
     <div data-testid="mock-map-view">
       <button
         type="button"
@@ -81,9 +85,7 @@ describe('LocationPicker', () => {
       wrapper,
     });
 
-    const searchInput = screen.getByPlaceholderText(
-      /Search address, place, or \/\/\/what3words/i,
-    );
+    const searchInput = screen.getByPlaceholderText(/Search address, place, or \/\/\/what3words/i);
     expect(searchInput).toBeInTheDocument();
     expect(screen.getByTestId('mock-map-view')).toBeInTheDocument();
   });

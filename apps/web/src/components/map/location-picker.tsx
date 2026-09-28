@@ -43,13 +43,11 @@ export function LocationPicker({ value, onChange, onResolveName, className }: Lo
 
   // What3Words lookup when input matches the pattern.
   const w3wWords = debouncedSearch.trim().replace(/^\/\/\//, '');
-  const { data: w3wResult, isFetching: w3wFetching } = useWhat3WordsLookup(
-    w3wWords,
-    isW3WQuery,
-  );
+  const { data: w3wResult, isFetching: w3wFetching } = useWhat3WordsLookup(w3wWords, isW3WQuery);
 
   // What3Words autosuggest for partial 3-word input.
-  const isPartialW3W = debouncedSearch.includes('.') && !isW3WQuery && debouncedSearch.split('.').length >= 2;
+  const isPartialW3W =
+    debouncedSearch.includes('.') && !isW3WQuery && debouncedSearch.split('.').length >= 2;
   const { data: w3wSuggestions } = useWhat3WordsAutosuggest(
     isPartialW3W ? debouncedSearch.trim() : '',
   );
@@ -95,17 +93,25 @@ export function LocationPicker({ value, onChange, onResolveName, className }: Lo
         .then((r) => r.json())
         .then((d) => {
           setLocating(false);
-          if (d.success !== false && typeof d.latitude === 'number' && typeof d.longitude === 'number') {
+          if (
+            d.success !== false &&
+            typeof d.latitude === 'number' &&
+            typeof d.longitude === 'number'
+          ) {
             const placeName = [d.city, d.region, d.country].filter(Boolean).join(', ');
             pick(d.latitude, d.longitude, placeName);
             toast.success(`Location set to ${placeName || 'your current area'}.`);
           } else {
-            toast.error('Could not determine your location. Please click on the map to place your pin.');
+            toast.error(
+              'Could not determine your location. Please click on the map to place your pin.',
+            );
           }
         })
         .catch(() => {
           setLocating(false);
-          toast.error('Could not determine your location. Please click on the map to place your pin.');
+          toast.error(
+            'Could not determine your location. Please click on the map to place your pin.',
+          );
         });
     };
 
@@ -214,9 +220,7 @@ export function LocationPicker({ value, onChange, onResolveName, className }: Lo
                     aria-hidden
                   />
                   <div>
-                    <span className="font-mono text-sm font-medium">
-                      ///{suggestion.words}
-                    </span>
+                    <span className="font-mono text-sm font-medium">///{suggestion.words}</span>
                     {suggestion.nearestPlace && (
                       <span className="ml-2 text-xs text-muted-foreground">
                         near {suggestion.nearestPlace}

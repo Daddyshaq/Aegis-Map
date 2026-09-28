@@ -12,7 +12,6 @@ import {
   VerificationBadge,
 } from '@/components/status-badges';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useCategories } from '@/hooks/use-categories';
@@ -37,7 +36,11 @@ export function HomePage() {
     () => (bounds ? { ...bounds, categoryId, verifiedOnly: verifiedOnly || undefined } : null),
     [bounds, categoryId, verifiedOnly],
   );
-  const { data: features, isLoading: isIncidentsLoading, isError: isIncidentsError } = useMapFeatures(queryBounds);
+  const {
+    data: features,
+    isLoading: isIncidentsLoading,
+    isError: isIncidentsError,
+  } = useMapFeatures(queryBounds);
   const { data: safeLocationsData, isLoading: isSafeLoading } = useSafeLocations({ pageSize: 100 });
 
   const safeLocations = useMemo(() => safeLocationsData?.items ?? [], [safeLocationsData]);
@@ -169,15 +172,18 @@ export function HomePage() {
             </div>
             <h2 className="mt-2 font-semibold leading-snug">{selectedIncident.title}</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              {categoryBySlug.get(selectedIncident.categorySlug)?.name ?? selectedIncident.categorySlug} ·{' '}
-              {formatRelativeTime(selectedIncident.reportedAt)}
+              {categoryBySlug.get(selectedIncident.categorySlug)?.name ??
+                selectedIncident.categorySlug}{' '}
+              · {formatRelativeTime(selectedIncident.reportedAt)}
             </p>
             <div className="mt-3 flex gap-2">
               <Button asChild size="sm" className="flex-1">
                 <Link to={routes.reportDetail(selectedIncident.id)}>View full report</Link>
               </Button>
               <Button asChild variant="outline" size="sm">
-                <Link to={`${routes.routing}?destinationLat=${selectedIncident.lat}&destinationLng=${selectedIncident.lng}`}>
+                <Link
+                  to={`${routes.routing}?destinationLat=${selectedIncident.lat}&destinationLng=${selectedIncident.lng}`}
+                >
                   <Icon name="navigation" className="mr-1.5 size-3.5" aria-hidden />
                   Route
                 </Link>
@@ -200,7 +206,10 @@ export function HomePage() {
                       className="inline-flex items-center gap-1 text-xs font-medium"
                       style={{ color: meta.color }}
                     >
-                      <span className="size-2 rounded-full" style={{ backgroundColor: meta.color }} />
+                      <span
+                        className="size-2 rounded-full"
+                        style={{ backgroundColor: meta.color }}
+                      />
                       {meta.label}
                     </span>
                   );
@@ -233,11 +242,17 @@ export function HomePage() {
               </p>
             )}
             <div className="mt-3 flex gap-2">
-              <Button asChild size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+              <Button
+                asChild
+                size="sm"
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
                 <Link to={routes.safeLocationDetail(selectedSafe.id)}>View details</Link>
               </Button>
               <Button asChild variant="outline" size="sm">
-                <Link to={`${routes.routing}?destinationLat=${selectedSafe.lat}&destinationLng=${selectedSafe.lng}`}>
+                <Link
+                  to={`${routes.routing}?destinationLat=${selectedSafe.lat}&destinationLng=${selectedSafe.lng}`}
+                >
                   <Icon name="navigation" className="mr-1.5 size-3.5" aria-hidden />
                   Directions
                 </Link>
@@ -330,11 +345,15 @@ export function HomePage() {
           ) : (
             <div>
               {isSafeLoading ? (
-                <p className="p-4 text-center text-sm text-muted-foreground">Loading safe havens…</p>
+                <p className="p-4 text-center text-sm text-muted-foreground">
+                  Loading safe havens…
+                </p>
               ) : safeCount === 0 ? (
                 <div className="flex flex-col items-center gap-2 p-8 text-center">
                   <Icon name="shield-check" className="size-8 text-muted-foreground" aria-hidden />
-                  <p className="text-sm text-muted-foreground">No safe havens available currently.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No safe havens available currently.
+                  </p>
                 </div>
               ) : (
                 <ul className="space-y-2">

@@ -292,9 +292,7 @@ function PwaDeviceCard() {
             <Icon name="smartphone" className="size-4 text-primary" aria-hidden />
             App & Device
           </CardTitle>
-          <CardDescription>
-            Progressive Web App installation and offline status.
-          </CardDescription>
+          <CardDescription>Progressive Web App installation and offline status.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <InfoRow label="Experience">

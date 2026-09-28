@@ -5,7 +5,10 @@ import type { Database } from './types';
 export type TypedSupabaseClient = SupabaseClient<Database>;
 
 function cleanSupabaseUrl(url: string): string {
-  return url.trim().replace(/\/+$/, '').replace(/\/(rest|auth)\/v1\/?$/, '');
+  return url
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\/(rest|auth)\/v1\/?$/, '');
 }
 
 /**
