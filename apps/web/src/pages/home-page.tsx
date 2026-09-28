@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useCategories } from '@/hooks/use-categories';
 import { useMapFeatures, type MapBounds } from '@/hooks/use-map';
+import { useReports } from '@/hooks/use-reports';
 import { useSafeLocations } from '@/hooks/use-safe-locations';
 import { formatRelativeTime } from '@/lib/format';
 import { OPERATING_STATUS_META } from '@/lib/labels';
@@ -24,6 +25,7 @@ import { cn } from '@/lib/utils';
 
 export function HomePage() {
   const [bounds, setBounds] = useState<MapBounds | null>(null);
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | undefined>();
   const [categoryId, setCategoryId] = useState<string | undefined>();
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [showSafeLocations, setShowSafeLocations] = useState(true);
@@ -41,6 +43,8 @@ export function HomePage() {
     isLoading: isIncidentsLoading,
     isError: isIncidentsError,
   } = useMapFeatures(queryBounds);
+  const { data: recentReportsData, isLoading: isReportsLoading } = useReports({ pageSize: 50 });
+  const recentReports = useMemo(() => recentReportsData?.items ?? [], [recentReportsData]);
   const { data: safeLocationsData, isLoading: isSafeLoading } = useSafeLocations({ pageSize: 100 });
 
   const safeLocations = useMemo(() => safeLocationsData?.items ?? [], [safeLocationsData]);
@@ -51,9 +55,34 @@ export function HomePage() {
     return map;
   }, [categories]);
 
-  const incidentMarkers = useMemo<MapMarkerData[]>(
-    () =>
-      (features ?? []).map((f) => ({
+  const categoryById = useMemo(() => {
+    const map = new Map<string, { name: string; slug: string; icon: string; color: string }>();
+    for (const c of categories ?? []) map.set(c.id, c);
+    return map;
+  }, [categories]);
+
+  const incidentMarkers = useMemo<MapMarkerData[]>(() => {
+    const map = new Map<string, MapMarkerData>();
+    // First populate from all active reports in the database
+    for (const r of recentReports) {
+      if (categoryId && r.categoryId !== categoryId) continue;
+      if (verifiedOnly && r.verificationStatus !== 'VERIFIED') continue;
+      map.set(r.id, {
+        id: r.id,
+        lat: r.lat,
+        lng: r.lng,
+        color: RISK_PRESENTATION[r.riskLevel].color,
+        label: `${r.title} — ${RISK_PRESENTATION[r.riskLevel].label} risk`,
+        onClick: (id: string) => {
+          setSelectedSafeId(null);
+          setSelectedId(id);
+          setMapCenter({ lat: r.lat, lng: r.lng });
+        },
+      });
+    }
+    // Then layer in viewport-specific features
+    for (const f of features ?? []) {
+      map.set(f.id, {
         id: f.id,
         lat: f.lat,
         lng: f.lng,
@@ -62,10 +91,12 @@ export function HomePage() {
         onClick: (id: string) => {
           setSelectedSafeId(null);
           setSelectedId(id);
+          setMapCenter({ lat: f.lat, lng: f.lng });
         },
-      })),
-    [features],
-  );
+      });
+    }
+    return Array.from(map.values());
+  }, [features, recentReports, categoryId, verifiedOnly]);
 
   const safeMarkers = useMemo<MapMarkerData[]>(
     () =>
@@ -78,6 +109,7 @@ export function HomePage() {
         onClick: () => {
           setSelectedId(null);
           setSelectedSafeId(s.id);
+          setMapCenter({ lat: s.lat, lng: s.lng });
         },
       })),
     [safeLocations],
@@ -89,9 +121,53 @@ export function HomePage() {
   );
 
   const activeSelectedMarkerId = selectedId ?? (selectedSafeId ? `safe-${selectedSafeId}` : null);
-  const selectedIncident = features?.find((f) => f.id === selectedId) ?? null;
+  const selectedIncident = useMemo(() => {
+    if (!selectedId) return null;
+    const feat = features?.find((f) => f.id === selectedId);
+    if (feat) return feat;
+    const rep = recentReports.find((r) => r.id === selectedId);
+    if (!rep) return null;
+    return {
+      id: rep.id,
+      reference: rep.reference,
+      categoryId: rep.categoryId,
+      categorySlug: rep.category?.slug ?? categoryById.get(rep.categoryId)?.slug ?? '',
+      title: rep.title,
+      severity: rep.severity,
+      status: rep.status,
+      verificationStatus: rep.verificationStatus,
+      riskLevel: rep.riskLevel,
+      lat: rep.lat,
+      lng: rep.lng,
+      reportedAt: rep.reportedAt,
+      expiresAt: rep.expiresAt ?? null,
+    };
+  }, [selectedId, features, recentReports, categoryById]);
   const selectedSafe = safeLocations.find((s) => s.id === selectedSafeId) ?? null;
-  const incidentsCount = features?.length ?? 0;
+
+  const displayFeatures = useMemo(() => {
+    if (features && features.length > 0) return features;
+    return recentReports
+      .filter((r) => (categoryId ? r.categoryId === categoryId : true))
+      .filter((r) => (verifiedOnly ? r.verificationStatus === 'VERIFIED' : true))
+      .map((r) => ({
+        id: r.id,
+        reference: r.reference,
+        categoryId: r.categoryId,
+        categorySlug: r.category?.slug ?? categoryById.get(r.categoryId)?.slug ?? '',
+        title: r.title,
+        severity: r.severity,
+        status: r.status,
+        verificationStatus: r.verificationStatus,
+        riskLevel: r.riskLevel,
+        lat: r.lat,
+        lng: r.lng,
+        reportedAt: r.reportedAt,
+        expiresAt: r.expiresAt ?? null,
+      }));
+  }, [features, recentReports, categoryId, verifiedOnly, categoryById]);
+
+  const incidentsCount = displayFeatures.length;
   const safeCount = safeLocations.length;
 
   return (
@@ -99,6 +175,7 @@ export function HomePage() {
       {/* Map pane */}
       <div className="relative h-[55vh] lg:h-full">
         <MapView
+          center={mapCenter}
           markers={markers}
           selectedId={activeSelectedMarkerId}
           onBoundsChange={setBounds}
@@ -320,16 +397,21 @@ export function HomePage() {
               <p className="p-4 text-center text-sm text-muted-foreground">
                 Could not load incidents for this area.
               </p>
-            ) : incidentsCount === 0 && !isIncidentsLoading ? (
+            ) : incidentsCount === 0 && !isIncidentsLoading && !isReportsLoading ? (
               <div className="flex flex-col items-center gap-2 p-8 text-center">
                 <Icon name="shield-check" className="size-8 text-muted-foreground" aria-hidden />
                 <p className="text-sm text-muted-foreground">
-                  No incidents reported in this area. Pan or zoom the map to explore elsewhere.
+                  No incidents reported currently. Pan or zoom the map to explore elsewhere.
                 </p>
               </div>
             ) : (
               <ul className="space-y-2">
-                {(features ?? []).map((feature) => (
+                {features && features.length === 0 && recentReports.length > 0 && (
+                  <li className="rounded-md border border-dashed border-border/80 bg-muted/40 p-2.5 text-center text-xs text-muted-foreground">
+                    No incidents in current map view. Showing active reports from other regions:
+                  </li>
+                )}
+                {displayFeatures.map((feature) => (
                   <FeatureRow
                     key={feature.id}
                     feature={feature}
@@ -337,6 +419,7 @@ export function HomePage() {
                     onSelect={() => {
                       setSelectedSafeId(null);
                       setSelectedId(feature.id);
+                      setMapCenter({ lat: feature.lat, lng: feature.lng });
                     }}
                   />
                 ))}
@@ -365,6 +448,7 @@ export function HomePage() {
                       onSelect={() => {
                         setSelectedId(null);
                         setSelectedSafeId(location.id);
+                        setMapCenter({ lat: location.lat, lng: location.lng });
                       }}
                     />
                   ))}

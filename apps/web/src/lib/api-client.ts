@@ -168,6 +168,15 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   if (parsed && parsed.success) {
+    // When the server wraps paginated collections (items in parsed.data, pagination in parsed.meta),
+    // normalize into the Paginated<T> contract { items, pagination } while keeping array methods intact.
+    if (parsed.meta?.pagination && Array.isArray(parsed.data)) {
+      const paginatedResult = Object.assign(parsed.data, {
+        items: parsed.data,
+        pagination: parsed.meta.pagination,
+      });
+      return paginatedResult as unknown as T;
+    }
     return parsed.data;
   }
 
