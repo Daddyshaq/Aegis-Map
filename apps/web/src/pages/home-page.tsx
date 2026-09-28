@@ -146,11 +146,13 @@ export function HomePage() {
   const selectedSafe = safeLocations.find((s) => s.id === selectedSafeId) ?? null;
 
   const displayFeatures = useMemo(() => {
-    if (features && features.length > 0) return features;
-    return recentReports
-      .filter((r) => (categoryId ? r.categoryId === categoryId : true))
-      .filter((r) => (verifiedOnly ? r.verificationStatus === 'VERIFIED' : true))
-      .map((r) => ({
+    const map = new Map<string, CrisisMapFeature>();
+
+    // 1. Seed with all active reports from database matching filters
+    for (const r of recentReports) {
+      if (categoryId && r.categoryId !== categoryId) continue;
+      if (verifiedOnly && r.verificationStatus !== 'VERIFIED') continue;
+      map.set(r.id, {
         id: r.id,
         reference: r.reference,
         categoryId: r.categoryId,
@@ -164,8 +166,38 @@ export function HomePage() {
         lng: r.lng,
         reportedAt: r.reportedAt,
         expiresAt: r.expiresAt ?? null,
-      }));
-  }, [features, recentReports, categoryId, verifiedOnly, categoryById]);
+      });
+    }
+
+    // 2. Merge viewport features (which may contain fresh updates or spatial properties)
+    for (const f of features ?? []) {
+      if (categoryId && f.categoryId !== categoryId) continue;
+      if (verifiedOnly && f.verificationStatus !== 'VERIFIED') continue;
+      map.set(f.id, f);
+    }
+
+    const all = Array.from(map.values());
+
+    // 3. Sort: incidents within active map bounds come first, then most recently reported
+    if (bounds) {
+      const minLat = Math.min(bounds.minLat, bounds.maxLat);
+      const maxLat = Math.max(bounds.minLat, bounds.maxLat);
+      const minLng = Math.min(bounds.minLng, bounds.maxLng);
+      const maxLng = Math.max(bounds.minLng, bounds.maxLng);
+
+      all.sort((a, b) => {
+        const aInBounds = a.lat >= minLat && a.lat <= maxLat && a.lng >= minLng && a.lng <= maxLng;
+        const bInBounds = b.lat >= minLat && b.lat <= maxLat && b.lng >= minLng && b.lng <= maxLng;
+        if (aInBounds && !bInBounds) return -1;
+        if (!aInBounds && bInBounds) return 1;
+        return new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime();
+      });
+    } else {
+      all.sort((a, b) => new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime());
+    }
+
+    return all;
+  }, [features, recentReports, bounds, categoryId, verifiedOnly, categoryById]);
 
   const incidentsCount = displayFeatures.length;
   const safeCount = safeLocations.length;
@@ -406,23 +438,32 @@ export function HomePage() {
               </div>
             ) : (
               <ul className="space-y-2">
-                {features && features.length === 0 && recentReports.length > 0 && (
-                  <li className="rounded-md border border-dashed border-border/80 bg-muted/40 p-2.5 text-center text-xs text-muted-foreground">
-                    No incidents in current map view. Showing active reports from other regions:
-                  </li>
-                )}
-                {displayFeatures.map((feature) => (
-                  <FeatureRow
-                    key={feature.id}
-                    feature={feature}
-                    selected={feature.id === selectedId}
-                    onSelect={() => {
-                      setSelectedSafeId(null);
-                      setSelectedId(feature.id);
-                      setMapCenter({ lat: feature.lat, lng: feature.lng });
-                    }}
-                  />
-                ))}
+                {displayFeatures.map((feature) => {
+                  const inView = bounds
+                    ? feature.lat >= Math.min(bounds.minLat, bounds.maxLat) &&
+                      feature.lat <= Math.max(bounds.minLat, bounds.maxLat) &&
+                      feature.lng >= Math.min(bounds.minLng, bounds.maxLng) &&
+                      feature.lng <= Math.max(bounds.minLng, bounds.maxLng)
+                    : false;
+
+                  return (
+                    <FeatureRow
+                      key={feature.id}
+                      feature={feature}
+                      selected={feature.id === selectedId}
+                      categoryName={
+                        categoryBySlug.get(feature.categorySlug)?.name ??
+                        categoryById.get(feature.categoryId)?.name
+                      }
+                      inView={inView}
+                      onSelect={() => {
+                        setSelectedSafeId(null);
+                        setSelectedId(feature.id);
+                        setMapCenter({ lat: feature.lat, lng: feature.lng });
+                      }}
+                    />
+                  );
+                })}
               </ul>
             )
           ) : (
@@ -491,10 +532,14 @@ function FilterChip({
 function FeatureRow({
   feature,
   selected,
+  categoryName,
+  inView,
   onSelect,
 }: {
   feature: CrisisMapFeature;
   selected: boolean;
+  categoryName?: string;
+  inView?: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -507,9 +552,22 @@ function FeatureRow({
           selected && 'border-primary ring-1 ring-primary',
         )}
       >
-        <div className="flex flex-wrap items-center gap-1.5">
-          <SeverityBadge severity={feature.severity} size="sm" />
-          <VerificationBadge status={feature.verificationStatus} size="sm" />
+        <div className="flex flex-wrap items-center justify-between gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <SeverityBadge severity={feature.severity} size="sm" />
+            <VerificationBadge status={feature.verificationStatus} size="sm" />
+            {categoryName && (
+              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {categoryName}
+              </span>
+            )}
+          </div>
+          {inView && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary">
+              <span className="size-1.5 rounded-full bg-primary" />
+              In map view
+            </span>
+          )}
         </div>
         <p className="mt-1.5 line-clamp-1 font-medium">{feature.title}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
